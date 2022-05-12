@@ -26,12 +26,6 @@ to a server setting or returning from a setting when the accepted
 and return types have been registered), we can do even better.
 """
 
-from __future__ import absolute_import
-from __future__ import print_function
-
-from builtins import range
-from future.utils import with_metaclass
-
 import collections
 import datetime
 import itertools
@@ -46,15 +40,6 @@ import numpy as np
 import labrad.units as U
 from labrad.units import Value, Complex
 
-try:
-    from types import InstanceType
-except ImportError:
-    InstanceType = None
-
-try:
-    long_type = long
-except NameError:
-    long_type = int  # python 3 has no long type
 
 SYSTEM_BYTE_ORDER = '<' if sys.byteorder == 'little' else '>'
 
@@ -78,20 +63,6 @@ class Singleton(object):
 
 # a registry of parsing functions, keyed by type tag
 _parsers = {} # type tag -> parse function
-
-
-class RegisterParser(type):
-    """A metaclass for LabRAD types that have parsers.
-
-    When each class is created, this function gets called and
-    we register the __parse__ method of the class according
-    to the tag that the class specifies.
-    """
-    def __new__(cls, name, bases, dict):
-        c = type.__new__(cls, name, bases, dict)
-        if 'tag' in dict:
-            _parsers[dict['tag']] = c.__parse__
-        return c
 
 
 class Buffer(object):
@@ -192,7 +163,7 @@ def parseSingleType(s):
     s.strip(WHITESPACE)
     return t
 
-COMMENTS = re.compile('\{[^\{\}]*\}')
+COMMENTS = re.compile(r'\{[^\{\}]*\}')
 
 def stripComments(s):
     """Remove comments from a type tag.
@@ -267,10 +238,6 @@ def getType(obj):
 
     if t == FlatData:
         return parseTypeTag(obj.tag)
-
-    # handle classic classes (python 2)
-    if InstanceType is not None and t == InstanceType:
-        t = obj.__class__
 
     # check if we know this type
     if t in _types:
@@ -454,7 +421,7 @@ def reprLRData(s):
 
 # LabRAD type classes
 
-class Type(with_metaclass(RegisterParser, object)):
+class Type:
     """Base class of all LabRAD type objects.
 
     These type classes manage parsing and creation of type tags,
@@ -463,6 +430,10 @@ class Type(with_metaclass(RegisterParser, object)):
     """
     width = 0
     isFixedWidth = True
+    tag: str
+
+    def __init_subclass__(cls) -> None:
+        _parsers[cls.tag] = cls.__parse__
 
     def __str__(self):
         """Convert to a type tag string format.
@@ -642,7 +613,7 @@ class TInt(Type, Singleton):
         return struct.unpack(endianness + 'i', s.get(4))[0]
 
     def __flatten__(self, n, endianness):
-        if not isinstance(n, (int, long_type, np.integer)):
+        if not isinstance(n, (int, np.integer)):
             raise FlatteningError(n, self)
         if n >= 0x80000000 or n < -0x80000000:
             raise ValueError("out of range for type i: {0}".format(n))
@@ -658,19 +629,15 @@ class TUInt(Type, Singleton):
     tag = 'w'
     width = 4
     def __unflatten__(self, s, endianness):
-        return long_type(struct.unpack(endianness + 'I', s.get(4))[0])
+        return int(struct.unpack(endianness + 'I', s.get(4))[0])
 
     def __flatten__(self, n, endianness):
-        if not isinstance(n, (int, long_type, np.integer)):
+        if not isinstance(n, (int, np.integer)):
             raise FlatteningError(n, self)
         if n > 0xFFFFFFFF or n < 0:
             raise ValueError("out of range for type w: {0}".format(n))
         return struct.pack(endianness + 'I', n), self
 
-try:
-    registerType(long, TUInt())
-except NameError:
-    pass  # python 3 has no long type
 registerType(np.uint32, TUInt())
 registerType(np.uint64, TUInt())
 
@@ -706,10 +673,6 @@ class TStr(Type, Singleton):
         return struct.pack(endianness + 'I', len(b)) + b, self
 
 registerType(str, TStr())
-try:
-    registerType(unicode, TStr())
-except NameError:
-    pass  # python 3 has no unicode type
 
 class TBytes(Type, Singleton):
     """A raw 8-bit byte string."""
@@ -760,7 +723,7 @@ class TTime(Type, Singleton):
     def __flatten__(self, t, endianness):
         diff = t - timeOffset()
         secs = diff.days * (60 * 60 * 24) + diff.seconds
-        us = long_type(float(diff.microseconds) / pow(10, 6) * pow(2, 64))
+        us = int(float(diff.microseconds) / pow(10, 6) * pow(2, 64))
         return struct.pack(endianness + 'QQ', secs, us), self
 
 registerType(datetime.datetime, TTime())
@@ -787,7 +750,7 @@ class TValue(Type):
 
     # Types which can be flattened by TValue as 'v[]' via coercion to
     # float. See __flatten__.
-    CASTABLE_TYPES = [int, long_type]
+    CASTABLE_TYPES = [int]
 
     def __init__(self, unit=None):
         if isinstance(unit, U.Unit):
@@ -1259,9 +1222,9 @@ class TList(Type):
     def _unflatten_as_array(self, s, endianness, elem, dims, size):
         """Unflatten to numpy array."""
         def make(t, width):
-            a = np.fromstring(s.get(size*width), dtype=np.dtype(t))
+            a = np.frombuffer(s.get(size*width), dtype=np.dtype(t))
             if endianness != SYSTEM_BYTE_ORDER:
-                a.byteswap(True) # inplace
+                a = a.byteswap(inplace=False)
             return a
 
         if elem == TBool(): a = make('bool', 1)
