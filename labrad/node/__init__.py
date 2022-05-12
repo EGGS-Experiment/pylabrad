@@ -455,9 +455,9 @@ class NodeConfig(object):
 
     def _update(self, config, triggerRefresh=True):
         """Update instance variables from loaded config."""
-        self.dirs, self.extensions, self.autostart = config
-        print('config updated: dirs={}, extensions={}, autostart={}'.format(
-        self.dirs, self.extensions, self.autostart))
+        self.dirs, self.extensions, self.autostart, self.autostart_ordered = config
+        print('config updated: dirs={}, extensions={}, autostart={}, autostart_ordered={}'.format(
+        self.dirs, self.extensions, self.autostart, self.autostart_ordered))
         if triggerRefresh:
             self.parent.refreshServers()
 
@@ -474,13 +474,15 @@ class NodeConfig(object):
         p.get('directories', '*s', key='dirs')
         p.get('extensions', '*s', key='exts')
         p.get('autostart', '*s', True, [], key='autostart')
+        p.get('autostart_ordered', key='autostart_ordered')
         ans = yield p.send()
         def remove_empties(strs):
             return [s for s in strs if s]
         dirs = remove_empties(ans.dirs)
         exts = remove_empties(ans.exts)
         autostart = sorted(remove_empties(ans.autostart))
-        returnValue((dirs, exts, autostart))
+        autostart_ordered = remove_empties(ans.autostart_ordered)
+        returnValue((dirs, exts, autostart, autostart_ordered))
 
     def _save(self):
         """Save the current configuration to the registry."""
@@ -733,7 +735,7 @@ class NodeServer(LabradServer):
         inst = self.instances[instance_name]
         yield inst.stop()
         # ensure instance is removed from instance dict before we return
-        self._remove_instance(instance_name) 
+        self._remove_instance(instance_name)
         returnValue(inst)
 
     def _remove_instance(self, instance_name):
@@ -808,10 +810,24 @@ class NodeServer(LabradServer):
         the node first starts up, but can be invoked manually at any time
         thereafter.
         """
+        # running = set(s.server_name for s in self.instances.values())
+        # to_start = [name for name in self.config.autostart
+        #                  if name not in running]
+        # deferreds = [(name, self.start(c, name)) for name in to_start]
+        # for name, deferred in deferreds:
+        #     try:
+        #         yield deferred
+        #     except Exception:
+        #         logging.error('Failed to autostart "%s"', name, exc_info=True)
         running = set(s.server_name for s in self.instances.values())
+        servers_ordered = dict(self.config.autostart_ordered)
         to_start = [name for name in self.config.autostart
                          if name not in running]
         deferreds = [(name, self.start(c, name)) for name in to_start]
+        # todo: create lists of servers based on order
+        # todo: for loop yield start them by list
+        # todo: ensure blocking
+        # todo: wait until finish before next list
         for name, deferred in deferreds:
             try:
                 yield deferred
