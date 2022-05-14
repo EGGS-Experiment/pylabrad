@@ -817,15 +817,23 @@ class NodeServer(LabradServer):
         #         yield deferred
         #     except Exception:
         #         logging.error('Failed to autostart "%s"', name, exc_info=True)
+        # get running servers
         running = set(s.server_name for s in self.instances.values())
-        servers_ordered = dict(self.config.autostart_ordered)
-        to_start = [name for name in self.config.autostart
-                         if name not in running]
-        deferreds = [(name, self.start(c, name)) for name in to_start]
-        # todo: create lists of servers based on order
-        # todo: for loop yield start them by list
+        # get all (server, order) pairs
+        servers_ordered = self.config.autostart_ordered
+        # get all order numbers
+        order_numbers = sorted(set([number[1] for number in servers_ordered]))
+        # create lists of servers with the same startup order number
+        server_startup_groups = []
+        for order_number in order_numbers:
+            # ensure server is not already running
+            list_tmp = [server[0] for server in servers_ordered
+                        if server[0] not in running]
+            server_startup_groups.append(list_tmp)
         # todo: ensure blocking
-        # todo: wait until finish before next list
+        for server_list in server_startup_groups:
+            # todo: create deferreds
+        deferreds = [(name, self.start(c, name)) for name in to_start]
         for name, deferred in deferreds:
             try:
                 yield deferred
