@@ -472,6 +472,7 @@ class NodeConfig(object):
         p.get('directories', '*s', key='dirs')
         p.get('extensions', '*s', key='exts')
         p.get('autostart', '*s', True, [], key='autostart')
+        # get keys for an ordered autostart
         p.get('autostart_ordered', key='autostart_ordered')
         ans = yield p.send()
         def remove_empties(strs):
@@ -479,6 +480,7 @@ class NodeConfig(object):
         dirs = remove_empties(ans.dirs)
         exts = remove_empties(ans.exts)
         autostart = sorted(remove_empties(ans.autostart))
+        # remove empties an ordered autostart
         autostart_ordered = remove_empties(ans.autostart_ordered)
         returnValue((dirs, exts, autostart, autostart_ordered))
 
@@ -817,28 +819,37 @@ class NodeServer(LabradServer):
         #         yield deferred
         #     except Exception:
         #         logging.error('Failed to autostart "%s"', name, exc_info=True)
+
+
         # get running servers
         running = set(s.server_name for s in self.instances.values())
         # get all (server, order) pairs
         servers_ordered = self.config.autostart_ordered
         # get all order numbers
-        order_numbers = sorted(set([number[1] for number in servers_ordered]))
-        # create lists of servers with the same startup order number
+        order_numbers = sorted(set([number for server, number in servers_ordered]))
         server_startup_groups = []
+        # create lists of servers with the same startup order number
         for order_number in order_numbers:
             # ensure server is not already running
-            list_tmp = [server[0] for server in servers_ordered
-                        if server[0] not in running]
+            list_tmp = [server for server, number in servers_ordered
+                        if server not in running]
             server_startup_groups.append(list_tmp)
-        # todo: ensure blocking
+        # start up servers within the same group simultaneously
+        @inlineCallbacks
+        def start_server_group(server_list):
+            deferreds = [(name, self.start(c, name)) for name in server_list]
+            for name, deferred in deferreds:
+                try:
+                    yield deferred
+                except Exception:
+                    logging.error('Failed to autostart "%s"', name, exc_info=True)
+        def tmp():
+            print("th block")
+        # start up server groups
         for server_list in server_startup_groups:
-            # todo: create deferreds
-        deferreds = [(name, self.start(c, name)) for name in to_start]
-        for name, deferred in deferreds:
-            try:
-                yield deferred
-            except Exception:
-                logging.error('Failed to autostart "%s"', name, exc_info=True)
+            d = start_server_group(server_list)
+            d.addCallback(tmp)
+
 
     @setting(201, returns='*s')
     def autostart_list(self, c):
