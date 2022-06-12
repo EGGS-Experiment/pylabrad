@@ -475,9 +475,9 @@ def runServer(srv, run_reactor=True, stop_reactor=True):
                                        config['password'])
             yield srv.startup(p)
             yield srv.onShutdown()
-            logger.msg('Disconnected cleanly.')
+            logger.info('Disconnected cleanly.')
         except Exception as e:
-            logger.msg('There was an error: {}'.format(e))
+            logger.info('There was an error: {}'.format(e))
         if stop_reactor:
             try:
                 reactor.stop()
