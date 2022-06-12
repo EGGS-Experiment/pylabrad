@@ -54,3 +54,28 @@ class RequestResponseError(Error):
         messages = ['error in setting %d (code=%d)\n%s' % (ID, err.code, err.message)
                     for (ID, err) in errors]
         self.msg = '\n'.join(messages)
+
+
+## Settings
+class ParameterInvalidError(Exception):
+    """Invalid Parameter."""
+
+    def __init__(self, msg):
+        self.msg = msg
+
+    def __str__(self, msg):
+        return "Invalid Parameter: {:s}".format(self.msg)
+
+class ParameterRangeError(Exception):
+    """Parameter outside range."""
+
+    def __init__(self, parameter, range, msg=None):
+        self.parameter = parameter
+        self.range = range
+        self.msg = None
+
+    def __str__(self):
+        error_msg = "Parameter {:s} outside valid range {}".format(self.parameter, self.range)
+        if self.msg is not None:
+            error_msg += "\n" + self.msg
+        return error_msg
