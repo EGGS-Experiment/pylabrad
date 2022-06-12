@@ -19,10 +19,12 @@ import re
 import sys
 import textwrap
 
+import logging
+
 from twisted.internet import defer, reactor
 from twisted.internet.defer import inlineCallbacks, returnValue
 from twisted.internet.threads import blockingCallFromThread
-from twisted.python import log, reflect, util
+from twisted.python import reflect, util
 
 from labrad import constants as C, crypto, support, thread
 from labrad.support import getNodeName
@@ -369,6 +371,80 @@ def updateServerOptions(srv, config):
     if hasattr(srv, 'instanceName'):
         srv.instanceName = interpEnvironmentVars(srv.instanceName, env)
 
+def _setupLogging(srv):
+    """
+    Sets up the logger for servers.
+    """
+    from os import environ
+    from socket import gethostname, SOCK_STREAM
+    from logging.handlers import SysLogHandler
+    # from rfc5424logging import Rfc5424SysLogHandler
+
+    # LoggerWriter object redirects stdout to logger
+    class _LoggerWriter:
+        def __init__(self, level):
+            self.level = level
+
+        def write(self, message):
+            if message != '\n':
+                self.level(message)
+
+        def flush(self):
+            self.level(sys.stderr)
+
+    # set up logger format
+    formatter = "%(asctime)s [%(name)-15.15s] [%(host)-15.15s] [%(server_name)-25.25s] [%(levelname)-10.10s]  %(message)s"
+    labradclientFormat = logging.Formatter(formatter)
+
+    # create syslog handler
+    syslog_socket = (environ['LABRADHOST'], int(environ['EGGS_LABRAD_SYSLOG_PORT']))
+    syslog_handler = SysLogHandler(address=syslog_socket)
+    syslog_handler.setFormatter(labradclientFormat)
+
+    # create console handler
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(labradclientFormat)
+
+    # todo: create rfc5424 handler
+
+    # create logger
+    logging.basicConfig(level=logging.DEBUG, handlers=None)
+    logger = logging.getLogger("labrad.server")
+    logger.propagate = False
+    logger.addHandler(syslog_handler)
+    logger.addHandler(console_handler)
+
+    # custom logging handler
+    d = {'host': gethostname(), 'server_name': srv.__class__.__name__}
+    class _LogHandler:
+        def __init__(self, logger):
+            self.logger = logger
+        def debug(self, msg, *args):
+            self.logger.debug(msg, extra=d)
+        def info(self, msg, *args):
+            self.logger.debug(msg, extra=d)
+        def warning(self, msg, *args):
+            self.logger.debug(msg, extra=d)
+        def critical(self, msg, *args):
+            self.logger.debug(msg, extra=d)
+        def error(self, msg, *args):
+            self.logger.debug(msg, extra=d)
+
+    logger_tmp = _LogHandler(logger)
+
+    # redirect print statements to logger
+    class _LoggerWriter:
+        def __init__(self, level):
+            self.level = level
+        def write(self, message):
+            if message != '\n':
+                self.level(message)
+        def flush(self):
+            self.level(sys.stderr)
+    sys.stdout = _LoggerWriter(logger_tmp.info)
+
+    return logger_tmp
+
 def runServer(srv, run_reactor=True, stop_reactor=True):
     """Run the given server instance.
 
@@ -382,13 +458,12 @@ def runServer(srv, run_reactor=True, stop_reactor=True):
             condition. Otherwise, the caller must arrange to call reactor.stop.
     """
     from labrad import protocol
+    from socket import gethostname
 
     config = parseServerOptions(name=srv.name)
     updateServerOptions(srv, config)
 
-    log.startLogging(sys.stdout)
-    #observer = MyLogObserver(sys.stdout)
-    #log.startLoggingWithObserver(observer.emit)
+    logger = _setupLogging(srv)
 
     @inlineCallbacks
     def run(srv):
@@ -400,9 +475,9 @@ def runServer(srv, run_reactor=True, stop_reactor=True):
                                        config['password'])
             yield srv.startup(p)
             yield srv.onShutdown()
-            log.msg('Disconnected cleanly.')
+            logger.msg('Disconnected cleanly.')
         except Exception as e:
-            log.msg('There was an error: {}'.format(e))
+            logger.msg('There was an error: {}'.format(e))
         if stop_reactor:
             try:
                 reactor.stop()
@@ -448,30 +523,3 @@ def syncRunServer(srv, host=C.MANAGER_HOST, port=None, username=None,
             blockingCallFromThread(reactor, stop_server)
         except Exception:
             pass # don't care about exceptions here
-
-
-
-class MyLogObserver(log.FileLogObserver):
-    timeFormat = '%Y/%m/%d %H:%M -'
-
-    def emit(self, eventDict):
-        edm = eventDict['message']
-        if not edm:
-            if eventDict['isError'] and 'failure' in eventDict:
-                text = ((eventDict.get('why') or 'Unhandled Error')
-                        + '\n' + eventDict['failure'].getTraceback())
-            elif 'format' in eventDict:
-                text = self._safeFormat(eventDict['format'], eventDict)
-            else:
-                # we don't know how to log this
-                return
-        else:
-            text = ' '.join(map(reflect.safe_str, edm))
-
-        timeStr = self.formatTime(eventDict['time'])
-        fmtDict = {'text': text.replace("\n", "\n\t")}
-        msgStr = self._safeFormat("%(text)s\n", fmtDict)
-
-        util.untilConcludes(self.write, timeStr + " " + msgStr)
-        util.untilConcludes(self.flush)  # Hoorj!
-
