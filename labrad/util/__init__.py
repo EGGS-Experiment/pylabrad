@@ -464,6 +464,7 @@ def runServer(srv, run_reactor=True, stop_reactor=True):
     updateServerOptions(srv, config)
 
     logger = _setupLogging(srv)
+    setattr(srv, "logger", logger)
 
     @inlineCallbacks
     def run(srv):

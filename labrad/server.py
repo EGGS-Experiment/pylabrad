@@ -24,12 +24,13 @@ from datetime import datetime
 from operator import attrgetter
 import threading
 import traceback
+import logging
 
 from concurrent import futures
 from twisted.internet import defer, reactor, threads
 from twisted.internet.defer import inlineCallbacks, returnValue
 from twisted.internet.error import ConnectionDone, ConnectionLost
-from twisted.python import failure, log, threadable
+from twisted.python import failure, threadable
 
 from labrad import constants as C, types as T, util
 import labrad.backend
@@ -191,6 +192,7 @@ class LabradServer(object):
 
     def __init__(self):
         self.description, self.notes = util.parseSettingDoc(self.__doc__)
+        self.logger = None
 
         self.started = False
         self.stopping = False
@@ -360,7 +362,7 @@ class LabradServer(object):
             self.started = True
             self.onStartup.callback(self)
         except Exception as e:
-            log.err("connection failed, disconnecting")
+            self.logger.err("Connection failed, disconnecting.")
             traceback.print_exc()
             self.disconnect(e)
             raise
@@ -394,7 +396,7 @@ class LabradServer(object):
         Here we register the settings and signals found on this server
         and set up message handlers for messages coming from the manager.
         """
-        log.msg('%s starting...' % self.name)
+        self.logger.info('%s starting...' % self.name)
         # register handlers for settings and signals
         mgr = self.client.manager
         p = mgr.packet()
@@ -425,7 +427,7 @@ class LabradServer(object):
 
         # let the rest of the world know we're ready
         yield mgr.s__start_serving()
-        log.msg('%s now serving' % self.name)
+        self.logger.info('%s now serving.' % self.name)
 
     @inlineCallbacks
     def _stopServer(self, *ignored):
