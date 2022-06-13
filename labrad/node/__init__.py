@@ -947,7 +947,7 @@ class NodeOptions(usage.Options):
              'TLS mode for connecting to manager (on/starttls/off)'],
             ['logfile', 'l', None, 'Enable logging to a file'],
             ['syslog_socket', 'x', None,
-             'Override default syslog socket. Absolute path or host[:port]']
+             'Override default syslog socket. Absolute path or host[:port]'],
             ['syslog_rfc5424', 'ss', False, "Additionally create an RFC5424 syslog handler"]
     ]
 
