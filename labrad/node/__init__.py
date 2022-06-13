@@ -192,6 +192,10 @@ class ServerProcess(ProcessProtocol):
             return None
         else:
             raise RuntimeError("Unsupported platform %s" % platformType)
+        # debug
+        print(self.args)
+        print(self.args[0])
+        # debug
 
     def set_status(self, value):
         """Transition to the given status and notify message listeners."""
@@ -943,9 +947,14 @@ class NodeOptions(usage.Options):
              'TLS mode for connecting to manager (on/starttls/off)'],
             ['logfile', 'l', None, 'Enable logging to a file'],
             ['syslog_socket', 'x', None,
-             'Override default syslog socket. Absolute path or host[:port]']]
-    optFlags = [['syslog', 's', 'Enable syslog'],
-                ['verbose', 'v', 'Enable debug output']]
+             'Override default syslog socket. Absolute path or host[:port]']
+            ['syslog_rfc5424', 'ss', False, "Additionally create an RFC5424 syslog handler"]
+    ]
+
+    optFlags = [
+        ['syslog', 's', 'Enable syslog'],
+        ['verbose', 'v', 'Enable debug output']
+    ]
 
 
 def makeService(options):
@@ -962,6 +971,7 @@ def makeService(options):
 def setup_logging(options):
     logging.basicConfig()
     node_log = logging.getLogger('labrad')
+
     if options['syslog']:
         # We need to find the path to the system log socket, which varies by
         # platform. Linux and OS/X defaults are listed below. On windows the
@@ -986,9 +996,26 @@ def setup_logging(options):
                     'Syslog specified, but default socket not known for '
                     'platform {}. Use -s option'.format(sys.platform))
             sys.exit(1)
+        if options['syslog_rfc5424']:
+            try:
+                from rfc5424logging import Rfc5424SysLogHandler
+                from socket import SOCK_STREAM
+                loki_handler = Rfc5424SysLogHandler(
+                    address=(os.environ['LABRADHOST'], 1514),
+                    socktype=SOCK_STREAM,
+                    enterprise_id=88888
+                )
+                node_log.addHandler(loki_handler)
+            except ImportError:
+                print("Error: RFC5424 syslog handler module is not installed.")
+            except Exception as e:
+                print("Error: unable to create RFC5424 syslog handler.")
+
+        # create and add default syslog handler
         syslog_handler = logging.handlers.SysLogHandler(address=address)
         syslog_handler.setFormatter(logging.Formatter('%(name)s: %(message)s'))
         node_log.addHandler(syslog_handler)
+
     if options['logfile']:
         file_handler = logging.handlers.RotatingFileHandler(
                 options['logfile'], maxBytes=800000, backupCount=5)
@@ -996,6 +1023,7 @@ def setup_logging(options):
                                       datefmt='%Y-%m-%d %H:%M:%S')
         file_handler.setFormatter(formatter)
         node_log.addHandler(file_handler)
+
     if options['verbose']:
         node_log.setLevel(logging.DEBUG)
     else:
