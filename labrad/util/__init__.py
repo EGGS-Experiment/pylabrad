@@ -371,79 +371,88 @@ def updateServerOptions(srv, config):
     if hasattr(srv, 'instanceName'):
         srv.instanceName = interpEnvironmentVars(srv.instanceName, env)
 
-def _setupLogging(srv):
+
+class _LoggerWriter:
+    """
+    Redirects stdout to logger.
+    """
+
+    def __init__(self, level):
+        self.level = level
+
+    def write(self, message):
+        if message != '\n':
+            self.level(message)
+
+    def flush(self):
+        self.level(sys.stderr)
+
+def setupLogging(srv):
     """
     Sets up the logger for servers.
+    Arguments:
+        srv: the server to set up logging for.
     """
     from os import environ
     from socket import gethostname, SOCK_STREAM
     from logging.handlers import SysLogHandler
-    # from rfc5424logging import Rfc5424SysLogHandler
 
-    # LoggerWriter object redirects stdout to logger
-    class _LoggerWriter:
-        def __init__(self, level):
-            self.level = level
-
-        def write(self, message):
-            if message != '\n':
-                self.level(message)
-
-        def flush(self):
-            self.level(sys.stderr)
-
-    # set up logger format
-    formatter = "%(asctime)s [%(name)-15.15s] [%(host)-15.15s] [%(server_name)-25.25s] [%(levelname)-10.10s]  %(message)s"
-    labradclientFormat = logging.Formatter(formatter)
+    # create labrad log formatter
+    labradLogFormatter = logging.Formatter(
+        "%(asctime)s [%(name)-15.15s] [%(sender_host)-15.15s] [%(sender_name)-25.25s] [%(levelname)-10.10s]  %(message)s"
+    )
 
     # create syslog handler
     syslog_socket = (environ['LABRADHOST'], int(environ['EGGS_LABRAD_SYSLOG_PORT']))
     syslog_handler = SysLogHandler(address=syslog_socket)
-    syslog_handler.setFormatter(labradclientFormat)
+    syslog_handler.setFormatter(labradLogFormatter)
 
     # create console handler
     console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setFormatter(labradclientFormat)
-
-    # todo: create rfc5424 handler
+    console_handler.setFormatter(labradLogFormatter)
 
     # create logger
     logging.basicConfig(level=logging.DEBUG, handlers=None)
     logger = logging.getLogger("labrad.server")
+
+    # don't propagate log events to root logger
     logger.propagate = False
+
+    # add handlers
     logger.addHandler(syslog_handler)
     logger.addHandler(console_handler)
 
-    # custom logging handler
-    d = {'host': gethostname(), 'server_name': srv.__class__.__name__}
-    class _LogHandler:
-        def __init__(self, logger):
-            self.logger = logger
-        def debug(self, msg, *args):
-            self.logger.debug(msg, extra=d)
-        def info(self, msg, *args):
-            self.logger.debug(msg, extra=d)
-        def warning(self, msg, *args):
-            self.logger.debug(msg, extra=d)
-        def critical(self, msg, *args):
-            self.logger.debug(msg, extra=d)
-        def error(self, msg, *args):
-            self.logger.debug(msg, extra=d)
-
-    logger_tmp = _LogHandler(logger)
-
     # redirect print statements to logger
-    class _LoggerWriter:
-        def __init__(self, level):
-            self.level = level
-        def write(self, message):
-            if message != '\n':
-                self.level(message)
-        def flush(self):
-            self.level(sys.stderr)
-    sys.stdout = _LoggerWriter(logger_tmp.info)
+    #sys.stdout = _LoggerWriter(logger.info)
 
-    return logger_tmp
+    # try to create rfc5424 handler
+    try:
+        from rfc5424logging import Rfc5424SysLogHandler, Rfc5424SysLogAdapter
+
+        # create
+        extraDict = {
+            'sender_host': gethostname(),
+            'sender_name': srv.__class__.__name__,
+        }
+        structured_data = {'sender': extraDict.copy()}
+        extraDict.update({'structured_data': structured_data})
+
+        loki_handler = Rfc5424SysLogHandler(
+            address=(environ['LABRADHOST'], 1514),
+            socktype=SOCK_STREAM,
+            enterprise_id=88888
+        )
+        logger.addHandler(loki_handler)
+
+        # set logger as instance variable of server
+        syslog_logger = Rfc5424SysLogAdapter(logger, extraDict)
+        setattr(srv, "logger", syslog_logger)
+    except ImportError:
+        print("Error: RFC5424 syslog handler module is not installed.")
+        setattr(srv, "logger", logger)
+    except Exception as e:
+        print("Error: unable to create RFC5424 syslog handler.")
+        setattr(srv, "logger", logger)
 
 def runServer(srv, run_reactor=True, stop_reactor=True):
     """Run the given server instance.
@@ -463,8 +472,7 @@ def runServer(srv, run_reactor=True, stop_reactor=True):
     config = parseServerOptions(name=srv.name)
     updateServerOptions(srv, config)
 
-    logger = _setupLogging(srv)
-    setattr(srv, "logger", logger)
+    setupLogging(srv)
 
     @inlineCallbacks
     def run(srv):
