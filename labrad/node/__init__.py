@@ -948,7 +948,7 @@ class NodeOptions(usage.Options):
             ['logfile', 'l', None, 'Enable logging to a file'],
             ['syslog_socket', 'x', None,
              'Override default syslog socket. Absolute path or host[:port]'],
-            ['syslog_rfc5424', 'ss', False, "Additionally create an RFC5424 syslog handler"]
+            ['syslog_rfc5424', 'k', False, 'Additionally create an RFC5424 syslog handler']
     ]
 
     optFlags = [
@@ -996,7 +996,12 @@ def setup_logging(options):
                     'Syslog specified, but default socket not known for '
                     'platform {}. Use -s option'.format(sys.platform))
             sys.exit(1)
+        print('yyyyyyyyyyyy')
         if options['syslog_rfc5424']:
+            print('yyyyyyyyyyyy')
+            print('yyyyyyyyyyyy')
+            print('yyyyyyyyyyyy')
+            print('yyyyyyyyyyyy')
             try:
                 from rfc5424logging import Rfc5424SysLogHandler
                 from socket import SOCK_STREAM
