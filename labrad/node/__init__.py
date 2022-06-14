@@ -993,6 +993,7 @@ def setup_logging(options):
                     'Syslog specified, but default socket not known for '
                     'platform {}. Use -s option'.format(sys.platform))
             sys.exit(1)
+
         if options['syslog_rfc5424']:
             try:
                 from rfc5424logging import Rfc5424SysLogHandler
