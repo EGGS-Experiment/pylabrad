@@ -362,7 +362,7 @@ class LabradServer(object):
             self.started = True
             self.onStartup.callback(self)
         except Exception as e:
-            self.logger.err("Connection failed, disconnecting.")
+            self.logger.error("Connection failed, disconnecting.")
             traceback.print_exc()
             self.disconnect(e)
             raise

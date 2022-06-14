@@ -391,7 +391,7 @@ def runServer(srv, run_reactor=True, stop_reactor=True):
 
     # set up logging
     setupLogging('labrad.server', srv)
-    logger = logging.getLogger('labrad.server', srv)
+    logger = logging.getLogger('labrad.server')
     setattr(srv, "logger", logger)
 
     @inlineCallbacks
