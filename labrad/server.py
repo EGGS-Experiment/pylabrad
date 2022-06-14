@@ -25,6 +25,7 @@ from operator import attrgetter
 import threading
 import traceback
 import logging
+import sys
 
 from concurrent import futures
 from twisted.internet import defer, reactor, threads
@@ -38,6 +39,7 @@ import labrad.client
 import labrad.concurrent
 from labrad.decorators import setting
 from labrad.wrappers import ClientAsync
+from labrad.logging import setupLogging, _LoggerWriter
 
 
 class Signal(object):
@@ -192,7 +194,10 @@ class LabradServer(object):
 
     def __init__(self):
         self.description, self.notes = util.parseSettingDoc(self.__doc__)
-        self.logger = None
+
+        # set logger as instance variable
+        self.logger = setupLogging('labrad.server', sender=self)
+        sys.stdout = _LoggerWriter(self.logger.info)
 
         self.started = False
         self.stopping = False
