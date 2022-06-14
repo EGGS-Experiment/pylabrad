@@ -29,12 +29,14 @@ def setupLogging(logger_name, sender=None):
     """
     Sets up the logger.
     Arguments:
-        logger_name (str)   : the name of the logger to set up.
-        sender      (class) : the sender.
+        logger_name : the name of the logger to set up.
+        sender      : the sender.
     """
     from os import environ
-    from socket import SOCK_STREAM
+    from socket import SOCK_STREAM, gethostname
     from logging.handlers import SysLogHandler
+    from rfc5424logging import Rfc5424SysLogHandler
+    from rfc5424logging.adapter import Rfc5424SysLogAdapter
 
     # create logger
     logging.basicConfig(level=logging.DEBUG, handlers=None)
@@ -61,22 +63,27 @@ def setupLogging(logger_name, sender=None):
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setFormatter(labradLogFormatter)
 
+        # create rfc5424 handler
+        loki_handler = Rfc5424SysLogHandler(
+            address=(environ['LABRADHOST'], 1514),
+            socktype=SOCK_STREAM,
+            enterprise_id=88888
+        )
+
         # add handlers
         logger.addHandler(syslog_handler)
         logger.addHandler(console_handler)
+        logger.addHandler(loki_handler)
 
-        # create rfc5424 handler
-        try:
-            from rfc5424logging import Rfc5424SysLogHandler
+    # create custom loghandler so logging labels are specific to each sender
+    extraDict = {
+        'sender_host': gethostname(),
+        'sender_name': sender.__class__.__name__,
+    }
 
-            loki_handler = Rfc5424SysLogHandler(
-                address=(environ['LABRADHOST'], 1514),
-                socktype=SOCK_STREAM,
-                enterprise_id=88888
-            )
+    structured_data = {'sender': extraDict.copy()}
+    extraDict.update({'structured_data': structured_data})
 
-            logger.addHandler(loki_handler)
-        except ImportError:
-            print("Error: RFC5424 syslog handler module is not installed.")
-        except Exception as e:
-            print("Error: unable to create RFC5424 syslog handler.")
+    # set logger as instance variable
+    logger_adapter = Rfc5424SysLogAdapter(logger, extraDict)
+    return logger_adapter

@@ -372,22 +372,6 @@ def updateServerOptions(srv, config):
     if hasattr(srv, 'instanceName'):
         srv.instanceName = interpEnvironmentVars(srv.instanceName, env)
 
-
-class _LoggerWriter:
-    """
-    Redirects stdout to logger.
-    """
-
-    def __init__(self, level):
-        self.level = level
-
-    def write(self, message):
-        if message != '\n':
-            self.level(message)
-
-    def flush(self):
-        self.level(sys.stderr)
-
 def runServer(srv, run_reactor=True, stop_reactor=True):
     """Run the given server instance.
 
@@ -401,12 +385,14 @@ def runServer(srv, run_reactor=True, stop_reactor=True):
             condition. Otherwise, the caller must arrange to call reactor.stop.
     """
     from labrad import protocol
-    from socket import gethostname
 
     config = parseServerOptions(name=srv.name)
     updateServerOptions(srv, config)
 
+    # set up logging
     setupLogging('labrad.server', srv)
+    logger = logging.getLogger('labrad.server', srv)
+    setattr(srv, "logger", logger)
 
     @inlineCallbacks
     def run(srv):
