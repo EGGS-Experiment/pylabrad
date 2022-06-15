@@ -65,13 +65,13 @@ For rsyslogd on ubuntu, create the following file:
 :syslogtag,contains,"labrad"			/var/log/labrad.log;RSYSLOG_TraditionalFileFormat
 """
 
-import logging
-import logging.handlers
 import os
 import shlex
 import socket
 import sys
 import zipfile
+import logging
+import logging.handlers
 from datetime import datetime
 
 from twisted.application.internet import TCPClient
@@ -87,6 +87,7 @@ import labrad
 import labrad.support
 from labrad import auth, protocol, util, types as T, constants as C
 from labrad.node import server_config
+from labrad.logging import _LoggerWriter
 from labrad.server import LabradServer, setting
 from labrad.util import DeferredSignal, interpEnvironmentVars, mux
 
@@ -457,9 +458,14 @@ class NodeConfig(object):
 
     def _update(self, config, triggerRefresh=True):
         """Update instance variables from loaded config."""
-        self.dirs, self.extensions, self.autostart, self.autostart_ordered = config
-        print('config updated: dirs={}, extensions={}, autostart={}, autostart_ordered={}'.format(
-        self.dirs, self.extensions, self.autostart, self.autostart_ordered))
+        #self.dirs, self.extensions, self.autostart, self.autostart_ordered = config
+        self.dirs, self.extensions, self.autostart = config
+        # print('config updated: dirs={}, extensions={}, autostart={}, autostart_ordered={}'.format(
+        #     self.dirs, self.extensions, self.autostart, self.autostart_ordered)
+        # )
+        print('config updated: dirs={}, extensions={}, autostart={}'.format(
+            self.dirs, self.extensions, self.autostart)
+        )
         if triggerRefresh:
             self.parent.refreshServers()
 
@@ -477,7 +483,7 @@ class NodeConfig(object):
         p.get('extensions', '*s', key='exts')
         p.get('autostart', '*s', True, [], key='autostart')
         # get keys for an ordered autostart
-        p.get('autostart_ordered', key='autostart_ordered')
+        #p.get('autostart_ordered', key='autostart_ordered')
         ans = yield p.send()
         def remove_empties(strs):
             return [s for s in strs if s]
@@ -485,8 +491,9 @@ class NodeConfig(object):
         exts = remove_empties(ans.exts)
         autostart = sorted(remove_empties(ans.autostart))
         # remove empties an ordered autostart
-        autostart_ordered = remove_empties(ans.autostart_ordered)
-        returnValue((dirs, exts, autostart, autostart_ordered))
+        #autostart_ordered = remove_empties(ans.autostart_ordered)
+        #returnValue((dirs, exts, autostart, autostart_ordered))
+        returnValue((dirs, exts, autostart))
 
     def _save(self):
         """Save the current configuration to the registry."""
@@ -824,8 +831,6 @@ class NodeServer(LabradServer):
             except Exception:
                 logging.error('Failed to autostart "%s"', name, exc_info=True)
 
-
-
     @setting(201, returns='*s')
     def autostart_list(self, c):
         """Get the list of servers that are configured to be autostarted."""
@@ -1000,21 +1005,6 @@ def setup_logging(options):
         node_log.setLevel(logging.DEBUG)
     else:
         node_log.setLevel(logging.INFO)
-
-    class _LoggerWriter:
-        """
-        Redirects stdout to logger.
-        """
-
-        def __init__(self, level):
-            self.level = level
-
-        def write(self, message):
-            if message != '\n':
-                self.level(message)
-
-        def flush(self):
-            self.level(sys.stderr)
 
     sys.stdout = _LoggerWriter(node_log.info)
 

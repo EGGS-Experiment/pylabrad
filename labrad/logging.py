@@ -13,6 +13,7 @@ class _LoggerWriter:
     """
     Redirects stdout to logger.
     """
+    encoding = 'utf-8'
 
     def __init__(self, level):
         self.level = level
@@ -65,7 +66,7 @@ def setupLogging(logger_name, sender=None):
 
         # create rfc5424 handler
         loki_handler = Rfc5424SysLogHandler(
-            address=(environ['LABRADHOST'], 1514),
+            address=('192.168.1.48', 1514),
             socktype=SOCK_STREAM,
             enterprise_id=88888
         )
