@@ -814,43 +814,15 @@ class NodeServer(LabradServer):
         the node first starts up, but can be invoked manually at any time
         thereafter.
         """
-        # get running servers
         running = set(s.server_name for s in self.instances.values())
-
-        # get all (server, order) pairs
-        servers_ordered = self.config.autostart_ordered
-        order_numbers = sorted(set([number for server, number in servers_ordered]))
-        server_startup_groups = []
-
-        # create lists of servers with the same startup order number
-        for order_number in order_numbers:
-            # ensure server is not already running
-            list_tmp = [server for server, number in servers_ordered
-                        if server not in running]
-            server_startup_groups.append(list_tmp)
-
-        # start up servers within the same group simultaneously
-        @inlineCallbacks
-        def start_server_group(server_list):
-            finished_servers = set()
-
-            # subscribe to server connect/disconnect message
-            def _addserver(c, server_name):
-                finished_servers.add(server_name)
-            def _removeserver(c, server_name):
-                finished_servers.add(server_name)
-            yield self.client.manager.subscribe_to_named_message('Server Connect', 1189213, True)
-            yield self.client.manager.addListener(listener=_addserver, source=None, ID=1189213)
-            yield self.client.manager.subscribe_to_named_message('Server Disconnect', 1189213 + 1, True)
-            yield self.client.manager.addListener(listener=_removeserver, source=None, ID=1189213 + 1)
-
-            # start up servers
-            deferreds = [(name, self.start(c, name)) for name in server_list]
-            for name, deferred in deferreds:
-                try:
-                    yield deferred
-                except Exception:
-                    logging.error('Failed to autostart "%s"', name, exc_info=True)
+        to_start = [name for name in self.config.autostart
+                         if name not in running]
+        deferreds = [(name, self.start(c, name)) for name in to_start]
+        for name, deferred in deferreds:
+            try:
+                yield deferred
+            except Exception:
+                logging.error('Failed to autostart "%s"', name, exc_info=True)
 
     @setting(201, returns='*s')
     def autostart_list(self, c):
