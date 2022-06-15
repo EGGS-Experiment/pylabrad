@@ -192,7 +192,7 @@ class LabradServer(object):
 
     def __init__(self):
         self.description, self.notes = util.parseSettingDoc(self.__doc__)
-        self.logger = None
+        self.logger = logging.getLogger('labrad.server')
 
         self.started = False
         self.stopping = False
@@ -362,7 +362,7 @@ class LabradServer(object):
             self.started = True
             self.onStartup.callback(self)
         except Exception as e:
-            self.logger.err("Connection failed, disconnecting.")
+            self.logger.error("Connection failed, disconnecting.")
             traceback.print_exc()
             self.disconnect(e)
             raise

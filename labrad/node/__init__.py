@@ -145,7 +145,7 @@ class ServerProcess(ProcessProtocol):
         self.output = []
         self.on_message = on_message
         self._lock = defer.DeferredLock()
-        logname = 'labrad.' + labrad.support.mangle(self.name)
+        logname = 'labrad.node.server'
         self.logger = logging.getLogger(logname)
 
         # Signal that will fire when the server process is shutdown.
@@ -852,6 +852,8 @@ class NodeServer(LabradServer):
                 except Exception:
                     logging.error('Failed to autostart "%s"', name, exc_info=True)
 
+
+
     @setting(201, returns='*s')
     def autostart_list(self, c):
         """Get the list of servers that are configured to be autostarted."""
@@ -967,7 +969,7 @@ def makeService(options):
 
 def setup_logging(options):
     logging.basicConfig()
-    node_log = logging.getLogger('labrad.')
+    node_log = logging.getLogger('labrad.node')
 
     if options['syslog']:
         # We need to find the path to the system log socket, which varies by
@@ -1026,6 +1028,23 @@ def setup_logging(options):
         node_log.setLevel(logging.DEBUG)
     else:
         node_log.setLevel(logging.INFO)
+
+    class _LoggerWriter:
+        """
+        Redirects stdout to logger.
+        """
+
+        def __init__(self, level):
+            self.level = level
+
+        def write(self, message):
+            if message != '\n':
+                self.level(message)
+
+        def flush(self):
+            self.level(sys.stderr)
+
+    sys.stdout = _LoggerWriter(node_log.info)
 
 def main():
     config = NodeOptions()
