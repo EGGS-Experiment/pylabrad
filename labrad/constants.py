@@ -20,7 +20,6 @@ Important constants that show up throughout the code.
 """
 
 import os
-import labrad.crypto
 
 DEFAULT_TLS = 'starttls'
 

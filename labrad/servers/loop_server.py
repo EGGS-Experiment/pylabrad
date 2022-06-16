@@ -13,13 +13,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from datetime import datetime
+
+from twisted.internet.defer import inlineCallbacks
+from twisted.python import log
+
 from labrad import util
 from labrad.server import LabradServer, setting
-
-from twisted.python import log
-from twisted.internet.defer import inlineCallbacks
-
-from datetime import datetime
 
 DELAY_TIME = .25 # time to wait between measurements
 

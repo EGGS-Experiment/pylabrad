@@ -1,7 +1,6 @@
 import io
 import os
 import sys
-
 from configparser import ConfigParser
 
 from labrad.util import findEnvironmentVars

@@ -6,7 +6,6 @@ import re
 
 from twisted.internet import ssl
 
-
 # Location where we store trusted self-signed manager certs.
 # The manager cert file for a given hostname is named <hostname>.cert
 # Note that real certs signed by public CAs are not stored here,

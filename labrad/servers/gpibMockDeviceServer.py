@@ -30,9 +30,10 @@ timeout = 5
 ### END NODE INFO
 """
 
-from labrad.server import setting
+from twisted.internet.defer import inlineCallbacks
+
 from labrad.gpib import GPIBManagedServer, GPIBDeviceWrapper
-from twisted.internet.defer import inlineCallbacks, returnValue
+
 
 class Mock0ADevice(GPIBDeviceWrapper):
     @inlineCallbacks

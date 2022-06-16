@@ -4,8 +4,8 @@ import random
 import pytest
 
 import labrad
-from labrad.server import LabradServer, ThreadedServer, setting
 from labrad import util
+from labrad.server import LabradServer, ThreadedServer, setting
 
 
 def test_server_expire_context_method_is_called():

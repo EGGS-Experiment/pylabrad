@@ -19,12 +19,12 @@ labrad.devices
 Superclass of generic device servers.
 """
 
+from twisted.internet import defer, reactor
+from twisted.internet.defer import inlineCallbacks, returnValue
+
 from labrad import errors
 from labrad.server import LabradServer, setting
 from labrad.support import MultiDict
-
-from twisted.internet import defer, reactor
-from twisted.internet.defer import inlineCallbacks, returnValue
 
 LOCK_TIMEOUT = 10
 

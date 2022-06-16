@@ -5,9 +5,9 @@ to break the explicit dependency on twisted.
 """
 
 import collections
+import keyword
 import os
 import socket
-import keyword
 
 
 def getNodeName():

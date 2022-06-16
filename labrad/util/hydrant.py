@@ -24,6 +24,7 @@ from random import choice, randint, gauss
 
 from labrad import types as T
 
+
 def randType(noneOkay=True, listOkay=True, nStructs=0):
     choices = [
         T.TNone,

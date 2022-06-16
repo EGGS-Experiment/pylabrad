@@ -27,6 +27,7 @@ import twisted.internet.defer as defer
 
 from labrad import types as T, util
 
+
 def _product(lists):
     """Return the cartesian product of a list of lists."""
     if not len(lists): return [[]]

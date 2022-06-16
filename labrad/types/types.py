@@ -40,7 +40,6 @@ import numpy as np
 import labrad.units as U
 from labrad.units import Value, Complex
 
-
 SYSTEM_BYTE_ORDER = '<' if sys.byteorder == 'little' else '>'
 
 

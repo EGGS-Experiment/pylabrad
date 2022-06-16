@@ -20,26 +20,25 @@ Base classes for building asynchronous, context- and request- aware
 servers with labrad.
 """
 
-from datetime import datetime
-from operator import attrgetter
 import sys
-import logging
 import threading
 import traceback
-
 from concurrent import futures
+from datetime import datetime
+from operator import attrgetter
+
 from twisted.internet import defer, reactor, threads
 from twisted.internet.defer import inlineCallbacks, returnValue
 from twisted.internet.error import ConnectionDone, ConnectionLost
 from twisted.python import failure, threadable
 
-from labrad import constants as C, types as T, util
 import labrad.backend
 import labrad.client
 import labrad.concurrent
+from labrad import types as T, util
 from labrad.decorators import setting
-from labrad.wrappers import ClientAsync
 from labrad.logging import setupLogging, _LoggerWriter
+from labrad.wrappers import ClientAsync
 
 
 class Signal(object):

@@ -31,13 +31,13 @@ timeout = 5
 ### END NODE INFO
 """
 
-from labrad import types as T, util
-from labrad.server import LabradServer, setting
-from labrad.units import m, s
-from labrad.util import hydrant
-
 from twisted.internet import defer, reactor
 from twisted.internet.defer import inlineCallbacks, returnValue
+
+from labrad import types as T, util
+from labrad.server import LabradServer, setting
+from labrad.units import s
+from labrad.util import hydrant
 
 
 class LocalTestServer(LabradServer):

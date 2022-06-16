@@ -30,13 +30,14 @@ timeout = 5
 ### END NODE INFO
 """
 
-from labrad import util
-from labrad.server import LabradServer, setting, Signal
+from datetime import datetime
+
 from twisted.internet import defer, reactor
 from twisted.internet.defer import returnValue
 from twisted.python import log
 
-from datetime import datetime
+from labrad.server import LabradServer, setting, Signal
+
 
 class DyingTestServer(LabradServer):
     """Server to test labrad from python.

@@ -21,7 +21,6 @@ from concurrent import futures
 
 import requests
 
-
 log = logging.getLogger(__name__)
 
 

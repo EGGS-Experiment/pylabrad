@@ -65,17 +65,15 @@ For rsyslogd on ubuntu, create the following file:
 :syslogtag,contains,"labrad"			/var/log/labrad.log;RSYSLOG_TraditionalFileFormat
 """
 
+import logging
+import logging.handlers
 import os
 import shlex
 import socket
 import sys
 import zipfile
-import logging
-import logging.handlers
 from datetime import datetime
 
-from twisted.application.internet import TCPClient
-from twisted.application.service import MultiService
 from twisted.internet import defer, reactor
 from twisted.internet.defer import inlineCallbacks, returnValue
 from twisted.internet.error import ProcessDone, ProcessTerminated
@@ -86,11 +84,10 @@ from twisted.python.runtime import platformType
 import labrad
 import labrad.support
 from labrad import auth, protocol, util, types as T, constants as C
-from labrad.node import server_config
 from labrad.logging import _LoggerWriter
+from labrad.node import server_config
 from labrad.server import LabradServer, setting
 from labrad.util import DeferredSignal, interpEnvironmentVars, mux
-
 
 # Maximum number of lines of stdout to keep per server.
 LOG_LENGTH = 1000

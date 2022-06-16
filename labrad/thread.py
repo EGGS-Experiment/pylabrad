@@ -22,9 +22,8 @@ asynchronous twisted backend.
 
 import threading
 
-from twisted.internet import reactor, defer
+from twisted.internet import reactor
 from twisted.python import threadable
-from twisted.python.failure import Failure
 
 threadable.init(1)
 

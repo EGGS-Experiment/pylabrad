@@ -14,22 +14,21 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import contextlib
+import logging
 import os
 import re
 import sys
 import textwrap
 
-import logging
-
 from twisted.internet import defer, reactor
 from twisted.internet.defer import inlineCallbacks, returnValue
 from twisted.internet.threads import blockingCallFromThread
-from twisted.python import reflect, util
 
-from labrad import constants as C, crypto, support, thread
+from labrad import constants as C, thread
+from labrad.logging import setupLogging
 from labrad.support import getNodeName
 from labrad.util.unwrap import unwrap
-from labrad.logging import setupLogging
+
 
 def fancyHelp(ID, name, accepts, returns, units, about):
     """Create informative help text for a server setting.

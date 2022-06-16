@@ -6,6 +6,7 @@ import labrad
 from labrad import types as T, util
 from labrad.server import LabradServer, setting
 
+
 class RefreshServer1(LabradServer):
     """First version of the refresh server."""
 

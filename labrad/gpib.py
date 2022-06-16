@@ -19,13 +19,14 @@ labrad.gpib
 Superclass of GPIB device servers.
 """
 
-from labrad import types as T, constants as C, util, errors
+from twisted.internet import defer
+from twisted.internet.defer import inlineCallbacks, returnValue
+
+from labrad import types as T, constants as C, errors
 from labrad.devices import DeviceWrapper, DeviceServer, DeviceLockedError
 from labrad.server import LabradServer, setting
 from labrad.support import MultiDict
 
-from twisted.internet import defer
-from twisted.internet.defer import inlineCallbacks, returnValue
 
 class GPIBDeviceWrapper(DeviceWrapper):
     """A wrapper for a gpib device."""

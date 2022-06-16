@@ -10,7 +10,6 @@ import labrad
 from labrad.servers import test_server
 from labrad.test import util
 
-
 # Directory where test servers are located.
 SERVERS_DIR = os.path.dirname(test_server.__file__)
 

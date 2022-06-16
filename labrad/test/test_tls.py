@@ -3,7 +3,6 @@ import contextlib
 import os
 import shutil
 import subprocess
-import sys
 import tempfile
 import time
 
@@ -11,7 +10,6 @@ import pytest
 
 import labrad
 from labrad import crypto
-
 
 IN_CI = os.environ.get('CI', False)
 ci_only = pytest.mark.skipif(not IN_CI, reason='only runs in CI')

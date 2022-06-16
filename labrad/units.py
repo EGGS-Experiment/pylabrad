@@ -61,6 +61,7 @@ import numpy as np
 from labrad import grammar
 from labrad.util import cache
 
+
 # Dictionary containing numbers
 #
 # These objects are meant to be used like arrays with generalized

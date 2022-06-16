@@ -21,11 +21,10 @@ Contains a blocking client connection to labrad.
 
 import warnings
 
-from labrad import types as T
 from labrad import constants as C
-from labrad.errors import Error
-from labrad.concurrent import map_future
+from labrad import types as T
 from labrad.backend import ManagerService
+from labrad.concurrent import map_future
 from labrad.support import (mangle, indent, PrettyMultiDict, FlatPacket,
                             PacketRecord, PacketResponse, hexdump)
 

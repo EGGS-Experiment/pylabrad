@@ -3,15 +3,14 @@
 Provides a backend connection that underlies the wrapper client object.
 """
 import threading
-import time
+from time import sleep
 
-from concurrent.futures import Future
 from twisted.internet import defer
 
-from labrad import support
+import labrad.constants as C
+import labrad.types as T
 from labrad import concurrent
-from labrad import types as T
-from labrad import constants as C
+from labrad import support
 from labrad.wrappers import getConnection
 
 __all__ = ["connect", "TwistedConnection", "ManagerService"]
@@ -55,7 +54,7 @@ class TwistedConnection(object):
             concurrent.call_future(self.cxn.disconnect).result()
             # Wait for the connected flag to go False.
             while self.connected:
-                time.sleep(0.01)
+                sleep(0.01)
 
     def spawn(self, timeout=C.TIMEOUT):
         """Start a new independent backend connection to the same manager."""

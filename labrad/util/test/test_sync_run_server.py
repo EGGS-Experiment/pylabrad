@@ -2,8 +2,9 @@ import threading
 
 import pytest
 
-from labrad.server import LabradServer
 from labrad import util
+from labrad.server import LabradServer
+
 
 def test_sync_run_server():
     """Ensure that syncRunServer runs the stopServer method on shutdown."""

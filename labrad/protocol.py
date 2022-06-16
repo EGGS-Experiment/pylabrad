@@ -26,10 +26,11 @@ import traceback
 
 from twisted.internet import reactor, protocol, defer
 from twisted.internet.defer import inlineCallbacks, returnValue
-from twisted.python import failure, log
+from twisted.python import log
 
+import labrad.constants as C
 import labrad.types as T
-from labrad import auth, constants as C, crypto, errors, oauth, support, util
+from labrad import auth, crypto, errors, oauth, util
 from labrad.stream import packetStream, flattenPacket
 
 

@@ -19,7 +19,7 @@ import time
 
 from labrad import types as T, util
 from labrad.server import ThreadedServer, setting
-from labrad.units import m, s
+from labrad.units import s
 from labrad.util import hydrant
 
 

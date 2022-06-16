@@ -3,8 +3,8 @@ import queue
 import pytest
 
 import labrad
-from labrad.server import LabradServer, setting, Signal
 import labrad.util
+from labrad.server import LabradServer, setting, Signal
 
 
 class SignalTestServer(LabradServer):

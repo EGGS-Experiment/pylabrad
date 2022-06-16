@@ -1,7 +1,8 @@
 from concurrent.futures import Future
+
+import pytest
 from twisted.internet import defer, reactor
 from twisted.python import threadable
-import pytest
 
 import labrad.concurrent as concurrent
 import labrad.thread as thread

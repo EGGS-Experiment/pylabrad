@@ -1,5 +1,5 @@
-import sys
 import logging
+import sys
 
 __all__ = ["labradLogFormatter", "_LoggerWriter", "setupLogging"]
 
