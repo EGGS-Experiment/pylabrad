@@ -486,7 +486,7 @@ class NodeConfig(object):
         p.get('directories', '*s', key='dirs')
         p.get('extensions', '*s', key='exts')
         p.get('autostart', '*s', True, [], key='autostart')
-        p.get('autostart_ordered', False, key='autostart_ordered')
+        p.get('autostart_ordered', False, [], key='autostart_ordered')
         ans = yield p.send()
         # remove empty values
         def remove_empties(strs):
