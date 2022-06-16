@@ -389,8 +389,7 @@ def runServer(srv, run_reactor=True, stop_reactor=True):
     updateServerOptions(srv, config)
 
     # set up logging
-    setupLogging('labrad.server', srv)
-    logger = logging.getLogger('labrad.server')
+    logger = setupLogging('labrad.server', srv)
 
     @inlineCallbacks
     def run(srv):

@@ -85,7 +85,7 @@ from twisted.python.runtime import platformType
 import labrad
 import labrad.support
 from labrad import auth, protocol, util, types as T, constants as C
-from labrad.logging import _LoggerWriter
+from labrad.logging import setupLogging, _LoggerWriter, labradLogFormatter
 from labrad.node import server_config
 from labrad.server import LabradServer, setting
 from labrad.util import DeferredSignal, interpEnvironmentVars, mux
@@ -100,6 +100,13 @@ SERVER_CONNECTED = 'Server Connect'
 
 # Labrad type of the node status info.
 STATUS_TYPE = '*(s{name} s{desc} s{ver} s{instname} *s{vars} *s{running})'
+
+#tmp
+_extraDict = {
+    'sender_host': socket.gethostname(),
+    'sender_name': "node",
+}
+node_logger_global = setupLogging('labrad.node', extraDict=_extraDict)
 
 
 class ServerProcess(ProcessProtocol):
@@ -145,7 +152,7 @@ class ServerProcess(ProcessProtocol):
         self.on_message = on_message
         self._lock = defer.DeferredLock()
         logname = 'labrad.node.server'
-        self.logger = logging.getLogger(logname)
+        self.logger = node_logger_global
 
         # Signal that will fire when the server process is shutdown.
         self.on_shutdown = DeferredSignal()
@@ -370,7 +377,7 @@ class Node(object):
     @inlineCallbacks
     def run(self):
         """Run the node in a loop, reconnecting after connection loss."""
-        log = logging.getLogger('labrad.node')
+        log = node_logger_global
         while True:
             print('Connecting to {}:{}...'.format(self.host, self.port))
             try:
@@ -962,7 +969,7 @@ class NodeOptions(usage.Options):
             ['logfile', 'l', None, 'Enable logging to a file'],
             ['syslog_socket', 'x', None,
              'Override default syslog socket. Absolute path or host[:port]'],
-            ['syslog_rfc5424', 'k', False, 'Additionally create an RFC5424 syslog handler']
+            ['syslog_rfc', 'k', False, 'Additionally create an RFC5424 syslog handler']
     ]
 
     optFlags = [
@@ -982,78 +989,78 @@ def makeService(options):
     return Node(name, host, port, username, password, tls_mode)
 
 
-def setup_logging(options):
-    logging.basicConfig()
-    node_log = logging.getLogger('labrad.node')
-
+def configureLogging(options):
+    """
+    Extracts logging configuration options from NodeConfig.
+    Arguments:
+        options:    the logging options.
+    """
+    config_opts = {}
     if options['syslog']:
         # We need to find the path to the system log socket, which varies by
         # platform. Linux and OS/X defaults are listed below. On windows the
         # only option is UDP logging, but since UDP is connectionless there is
         # no way to tell if there is actually a syslog daemon listening.
         # https://docs.python.org/2/library/logging.handlers.html#sysloghandler
+        # todo: fix up and see if we can straight use config_opts
+        config_opts['syslog'] = True
+
         if options['syslog_socket']:
             if '/' in options['syslog_socket']:
-                address = options['syslog_socket']
+                config_opts['syslog_socket'] = options['syslog_socket']
             else:
                 host, _, port = options['syslog_socket'].partition(':')
                 if port == '':
-                    address = (host, 514)
+                    config_opts['syslog_socket'] = (host, 1514)
                 else:
-                    address = (host, int(port))
+                    config_opts['syslog_socket'] = (host, int(port))
         elif sys.platform.startswith('linux'):
-            address = '/dev/log'
+            config_opts['syslog_socket'] = '/dev/log'
         elif sys.platform.startswith('darwin'):
-            address = '/var/run/syslog'
+            config_opts['syslog_socket'] = '/var/run/syslog'
         else:
             node_log.critical(
                     'Syslog specified, but default socket not known for '
-                    'platform {}. Use -s option'.format(sys.platform))
+                    'platform {}. Use -s option'.format(sys.platform)
+            )
             sys.exit(1)
 
-        if options['syslog_rfc5424']:
-            try:
-                from rfc5424logging import Rfc5424SysLogHandler
-                from socket import SOCK_STREAM
-                loki_handler = Rfc5424SysLogHandler(
-                    address=(os.environ['LABRADHOST'], 1514),
-                    socktype=SOCK_STREAM,
-                    enterprise_id=88888
-                )
-                node_log.addHandler(loki_handler)
-            except ImportError:
-                print("Error: RFC5424 syslog handler module is not installed.")
-            except Exception as e:
-                print("Error: unable to create RFC5424 syslog handler.")
+        if options['syslog_rfc']:
+            config_opts['syslog_rfc'] = '5424'
 
-        # create and add default syslog handler
-        syslog_handler = logging.handlers.SysLogHandler(address=address)
-        syslog_handler.setFormatter(logging.Formatter('%(name)s: %(message)s'))
-        node_log.addHandler(syslog_handler)
-
+    # todo: add logfile option to logging module
     if options['logfile']:
         file_handler = logging.handlers.RotatingFileHandler(
-                options['logfile'], maxBytes=800000, backupCount=5)
-        formatter = logging.Formatter('%(asctime)s - %(name)s: %(message)s',
-                                      datefmt='%Y-%m-%d %H:%M:%S')
-        file_handler.setFormatter(formatter)
+                options['logfile'], maxBytes=800000, backupCount=5
+        )
+        file_handler.setFormatter(labradLogFormatter)
         node_log.addHandler(file_handler)
 
     if options['verbose']:
-        node_log.setLevel(logging.DEBUG)
-    else:
-        node_log.setLevel(logging.INFO)
+        config_opts['log_level'] = logging.DEBUG
 
-    sys.stdout = _LoggerWriter(node_log.info)
+    return config_opts
+
 
 def main():
+    # get node config (mostly for logging)
     config = NodeOptions()
     config.parseOptions()
-    setup_logging(config)
-    logging.getLogger('labrad.node').info('Starting')
+
+    # set up logging
+    _extraDict = {
+        'sender_host': socket.gethostname(),
+        'sender_name': "node",
+    }
+    config_opts = configureLogging(config)
+    node_log = setupLogging('labrad.node', extraDict=_extraDict, **config_opts)
+
+    # run
+    node_log.info('Starting...')
     service = makeService(config)
     service.run()
     reactor.run()
+
 
 if __name__ == '__main__':
     main()
