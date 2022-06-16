@@ -73,6 +73,7 @@ import socket
 import sys
 import zipfile
 from datetime import datetime
+from time import sleep
 
 from twisted.internet import defer, reactor
 from twisted.internet.defer import inlineCallbacks, returnValue
@@ -437,11 +438,13 @@ class NodeConfig(object):
         create = '__default__' not in dirs
         defaults = ([], ['.ini', '.py'], [])
         defaults = yield self._load('__default__', create, defaults)
+        # todo: autostart defaults
 
         # load this node (creating config if necessary)
         create = self.nodename not in dirs
         config = yield self._load(self.nodename, create, defaults)
         self._update(config, False)
+        # todo: autostart defaults
 
         # setup messages when registry changes
         self._reg.addListener(self._handleMessage, context=self._ctx)
@@ -455,20 +458,16 @@ class NodeConfig(object):
 
     def _update(self, config, triggerRefresh=True):
         """Update instance variables from loaded config."""
-        #self.dirs, self.extensions, self.autostart, self.autostart_ordered = config
-        self.dirs, self.extensions, self.autostart = config
-        # print('config updated: dirs={}, extensions={}, autostart={}, autostart_ordered={}'.format(
-        #     self.dirs, self.extensions, self.autostart, self.autostart_ordered)
-        # )
-        print('config updated: dirs={}, extensions={}, autostart={}'.format(
-            self.dirs, self.extensions, self.autostart)
+        self.dirs, self.extensions, self.autostart, self.autostart_ordered = config
+        print('config updated: dirs={}, extensions={}, autostart={}, autostart_ordered={}'.format(
+            self.dirs, self.extensions, self.autostart, self.autostart_ordered)
         )
         if triggerRefresh:
             self.parent.refreshServers()
 
     @inlineCallbacks
     def _load(self, nodename=None, create=False, defaults=None):
-        """Load the current configuration out of the registry."""
+        """Load the current configuration out of the registry."""# todo: test
         p = self._packet()
         if nodename is not None:
             p.cd(['', 'Nodes', nodename], True)
@@ -476,21 +475,20 @@ class NodeConfig(object):
             p.set('directories', defaults[0])
             p.set('extensions', defaults[1])
             p.set('autostart', defaults[2])
+        # get values from registry
         p.get('directories', '*s', key='dirs')
         p.get('extensions', '*s', key='exts')
         p.get('autostart', '*s', True, [], key='autostart')
-        # get keys for an ordered autostart
-        #p.get('autostart_ordered', key='autostart_ordered')
+        p.get('autostart_ordered', False, key='autostart_ordered')
         ans = yield p.send()
+        # remove empty values
         def remove_empties(strs):
             return [s for s in strs if s]
         dirs = remove_empties(ans.dirs)
         exts = remove_empties(ans.exts)
         autostart = sorted(remove_empties(ans.autostart))
-        # remove empties an ordered autostart
-        #autostart_ordered = remove_empties(ans.autostart_ordered)
-        #returnValue((dirs, exts, autostart, autostart_ordered))
-        returnValue((dirs, exts, autostart))
+        autostart_ordered = remove_empties(ans.autostart_ordered)
+        returnValue((dirs, exts, autostart, autostart_ordered))
 
     def _save(self):
         """Save the current configuration to the registry."""
@@ -519,6 +517,7 @@ class NodeConfig(object):
         p = self._packet()
         p.cd(['', 'Nodes', self.nodename])
         p.set('autostart', sorted(autostart))
+        # todo: autostart ordered
         yield p.send()
 
 
@@ -818,15 +817,56 @@ class NodeServer(LabradServer):
         the node first starts up, but can be invoked manually at any time
         thereafter.
         """
+        # get running servers
         running = set(s.server_name for s in self.instances.values())
-        to_start = [name for name in self.config.autostart
-                         if name not in running]
-        deferreds = [(name, self.start(c, name)) for name in to_start]
-        for name, deferred in deferreds:
-            try:
-                yield deferred
-            except Exception:
-                logging.error('Failed to autostart "%s"', name, exc_info=True)
+
+        # get all (server, order) pairs
+        # todo: only if autostart_ordered exists
+        servers_ordered = self.config.autostart_ordered
+        order_numbers = sorted(set([number for server, number in servers_ordered]))
+        server_startup_groups = []
+
+        # create lists of servers with the same startup order number
+        for order_number in order_numbers:
+            # ensure server is not already running
+            list_tmp = [server for server, _ in servers_ordered if server not in running]
+            server_startup_groups.append(list_tmp)
+
+        # start up servers within the same group simultaneously
+        @inlineCallbacks
+        def start_server_group(server_list):
+            # start up servers
+            deferreds = [(name, self.start(c, name)) for name in server_list]
+            for name, deferred in deferreds:
+                try:
+                    yield deferred
+                except Exception:
+                    logging.error('Failed to autostart "%s"', name, exc_info=True)
+
+            iterations_max = 100
+            started_flag = False
+            for i in range(iterations_max):
+                # get started servers
+                started_servers = yield self.client.manager.servers()
+                started_servers = set([server_ident[1] for server_ident in started_servers])
+                # check if target server group is started
+                all_started = list(map(lambda server_name: server_name in started_servers, server_list))
+                # move on if we get all servers
+                if all(all_started):
+                    started_flag = True
+                    break
+                else:
+                    yield sleep(1)
+
+            # print verification message
+            if started_flag:
+                print("All servers started. Moving on to the next group.")
+            else:
+                print("Autostart ordered failed. Moving on to the next group.")
+
+        for server_list in server_startup_groups:
+            print(server_list)
+            yield start_server_group(server_list)
 
     @setting(201, returns='*s')
     def autostart_list(self, c):
@@ -841,6 +881,7 @@ class NodeServer(LabradServer):
         autostart = set(self.config.autostart)
         autostart.add(name)
         yield self.config.update_autostart(sorted(autostart))
+        # todo: autostart_ordered
 
     @setting(203, name='s', returns='')
     def autostart_remove(self, c, name):
