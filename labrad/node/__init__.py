@@ -65,25 +65,29 @@ For rsyslogd on ubuntu, create the following file:
 :syslogtag,contains,"labrad"			/var/log/labrad.log;RSYSLOG_TraditionalFileFormat
 """
 
-import logging
-import logging.handlers
 import os
+import sys
 import shlex
 import socket
-import sys
 import zipfile
-from datetime import datetime
+import logging
+import logging.handlers
+
 from time import sleep
+from datetime import datetime
 
 from twisted.internet import defer, reactor
+from twisted.internet.task import LoopingCall
 from twisted.internet.defer import inlineCallbacks, returnValue
 from twisted.internet.error import ProcessDone, ProcessTerminated
 from twisted.internet.protocol import ProcessProtocol
+
 from twisted.python import usage
 from twisted.python.runtime import platformType
 
 import labrad
 import labrad.support
+
 from labrad import auth, protocol, util, types as T, constants as C
 from labrad.logging import setupLogging, _LoggerWriter, labradLogFormatter
 from labrad.node import server_config
@@ -101,12 +105,13 @@ SERVER_CONNECTED = 'Server Connect'
 # Labrad type of the node status info.
 STATUS_TYPE = '*(s{name} s{desc} s{ver} s{instname} *s{vars} *s{running})'
 
-#tmp
+
+# create a logger for all of the node module
 _extraDict = {
     'sender_host': socket.gethostname(),
     'sender_name': "node",
 }
-node_logger_global = setupLogging('labrad.node', extraDict=_extraDict)
+node_log_global = setupLogging('labrad.node', extraDict=_extraDict)
 
 
 class ServerProcess(ProcessProtocol):
@@ -152,7 +157,7 @@ class ServerProcess(ProcessProtocol):
         self.on_message = on_message
         self._lock = defer.DeferredLock()
         logname = 'labrad.node.server'
-        self.logger = node_logger_global
+        self.logger = node_log_global
 
         # Signal that will fire when the server process is shutdown.
         self.on_shutdown = DeferredSignal()
@@ -198,10 +203,6 @@ class ServerProcess(ProcessProtocol):
             return None
         else:
             raise RuntimeError("Unsupported platform %s" % platformType)
-        # debug
-        print(self.args)
-        print(self.args[0])
-        # debug
 
     def set_status(self, value):
         """Transition to the given status and notify message listeners."""
@@ -377,7 +378,7 @@ class Node(object):
     @inlineCallbacks
     def run(self):
         """Run the node in a loop, reconnecting after connection loss."""
-        log = node_logger_global
+        log = node_log_global
         while True:
             print('Connecting to {}:{}...'.format(self.host, self.port))
             try:
@@ -511,7 +512,7 @@ class NodeConfig(object):
             config = yield self._load()
             self._update(config)
         except Exception:
-            logging.error('Error in _handleMessage', exc_info=True)
+            self.logger.error('Error in _handleMessage', exc_info=True)
 
     @inlineCallbacks
     def update_autostart(self, autostart):
@@ -662,8 +663,7 @@ class NodeServer(LabradServer):
                         versions.setdefault(config.version, []).append(config)
                     except Exception:
                         fname = os.path.join(path, f)
-                        logging.error('Error while loading config file "%s":' % fname,
-                                  exc_info=True)
+                        self.logger.error('Error while loading config file "%s":' % fname, exc_info=True)
 
         server_configs = {}
         for versions in configs.values():
@@ -671,7 +671,7 @@ class NodeServer(LabradServer):
                 if len(servers) > 1:
                     conflicting_files = [s.filename for s in servers]
                     s = servers[0]
-                    logging.warning(
+                    self.logger.warning(
                         'Found redundant server configs with same name and '
                         'version; will use {}. name={}, version={}, '
                         'conflicting_files={}'
@@ -824,65 +824,81 @@ class NodeServer(LabradServer):
         the node first starts up, but can be invoked manually at any time
         thereafter.
         """
+        # to_start = [name for name in self.config.autostart
+        #                  if name not in running]
+        # deferreds = [(name, self.start(c, name)) for name in to_start]
+        # for name, deferred in deferreds:
+        #     try:
+        #         yield deferred
+        #     except Exception:
+        #         self.logger.error('Failed to autostart "%s"', name, exc_info=True)
+
+        # get running servers
         running = set(s.server_name for s in self.instances.values())
-        to_start = [name for name in self.config.autostart
-                         if name not in running]
-        deferreds = [(name, self.start(c, name)) for name in to_start]
-        for name, deferred in deferreds:
-            try:
-                yield deferred
-            except Exception:
-                self.logger.error('Failed to autostart "%s"', name, exc_info=True)
-        # # get running servers
-        # running = set(s.server_name for s in self.instances.values())
-        #
-        # # get all (server, order) pairs
-        # # todo: only if autostart_ordered exists
-        # servers_ordered = self.config.autostart_ordered
-        # order_numbers = sorted(set([number for server, number in servers_ordered]))
-        # server_startup_groups = []
-        #
-        # # create lists of servers with the same startup order number
-        # for order_number in order_numbers:
-        #     # ensure server is not already running
-        #     list_tmp = [server for server, _ in servers_ordered if server not in running]
-        #     server_startup_groups.append(list_tmp)
-        #
-        # # start up servers within the same group simultaneously
-        # @inlineCallbacks
-        # def start_server_group(server_list):
-        #     # start up servers
-        #     deferreds = [(name, self.start(c, name)) for name in server_list]
-        #     for name, deferred in deferreds:
-        #         try:
-        #             yield deferred
-        #         except Exception:
-        #             logging.error('Failed to autostart "%s"', name, exc_info=True)
-        #
-        #     iterations_max = 100
-        #     started_flag = False
-        #     for i in range(iterations_max):
-        #         # get started servers
-        #         started_servers = yield self.client.manager.servers()
-        #         started_servers = set([server_ident[1] for server_ident in started_servers])
-        #         # check if target server group is started
-        #         all_started = list(map(lambda server_name: server_name in started_servers, server_list))
-        #         # move on if we get all servers
-        #         if all(all_started):
-        #             started_flag = True
-        #             break
-        #         else:
-        #             yield sleep(1)
-        #
-        #     # print verification message
-        #     if started_flag:
-        #         print("All servers started. Moving on to the next group.")
-        #     else:
-        #         print("Autostart ordered failed. Moving on to the next group.")
-        #
-        # for server_list in server_startup_groups:
-        #     print(server_list)
-        #     yield start_server_group(server_list)
+
+        # get all (server, order) pairs
+        # todo: only if autostart_ordered exists
+        servers_ordered = self.config.autostart_ordered
+        order_numbers = sorted(set([number for server, number in servers_ordered]))
+
+        # create lists of servers with the same startup order number
+        server_startup_groups = {}
+        for order_number in order_numbers:
+            # ensure server is not already running
+            list_tmp = [server for server, number in servers_ordered
+                        if (server not in running) and (number == order_number)]
+            server_startup_groups[order_number] = tuple(list_tmp)
+
+        print('server startup groups: {}'.format(server_startup_groups))
+
+        # start up servers within the same group simultaneously
+        @inlineCallbacks
+        def start_server_group(server_list):
+            # start up servers
+            deferreds = [(name, self.start(c, name)) for name in server_list]
+            for name, deferred in deferreds:
+                try:
+                    yield deferred
+                except Exception:
+                    self.logger.error('Failed to autostart "%s"', name, exc_info=True)
+            # todo: ensure we check for new names that are what node shoudl be
+
+            class ServerChecker(object):
+                def __init__(self, client):
+                    self.client = client
+                    self.counter = 0
+                    self.count_max = 8
+                    self.success = False
+                    self.refresher = LoopingCall(self._check_started)
+                    self.refresher.start(1, now=True)
+
+                @inlineCallbacks
+                def _check_started(self):
+                    # get started servers
+                    started_servers = yield self.client.manager.servers()
+                    started_servers = set([server_ident[1] for server_ident in started_servers])
+                    print('{:d}, started servers: {}'.format(self.counter, started_servers))
+
+                    # check if target server group is started
+                    all_started = list(map(lambda server_name: server_name in started_servers, server_list))
+                    # move on if we get all servers
+                    if all(all_started):
+                        self.success = True
+                        print("All servers started. Moving on to the next group.")
+                        self.refresher.stop()
+                    elif self.counter == self.count_max:
+                        print("Ordered autostart failed. Moving on to the next group.")
+                        self.refresher.stop()
+                    self.counter += 1
+
+            serv_checker = ServerChecker(self.client)
+            while serv_checker.refresher.running:
+                yield sleep(1)
+            print('server group finished')
+
+        for server_list in server_startup_groups.values():
+            print('starting new server group: {}'.format(server_list))
+            start_server_group(server_list)
 
     @setting(201, returns='*s')
     def autostart_list(self, c):
@@ -925,7 +941,7 @@ class NodeServer(LabradServer):
             try:
                 yield restart
             except Exception:
-                logging.error('Failed to restart "%s"', info['instance'],
+                self.logger.error('Failed to restart "%s"', info['instance'],
                               exc_info=True)
                 info['status'] = 'failed to restart'
             else:
@@ -1028,7 +1044,7 @@ def configureLogging(options):
         elif sys.platform.startswith('darwin'):
             config_opts['syslog_socket'] = '/var/run/syslog'
         else:
-            node_log.critical(
+            node_log_global.critical(
                     'Syslog specified, but default socket not known for '
                     'platform {}. Use -s option'.format(sys.platform)
             )
@@ -1043,7 +1059,7 @@ def configureLogging(options):
                 options['logfile'], maxBytes=800000, backupCount=5
         )
         file_handler.setFormatter(labradLogFormatter)
-        node_log.addHandler(file_handler)
+        node_log_global.addHandler(file_handler)
 
     if options['verbose']:
         config_opts['log_level'] = logging.DEBUG
