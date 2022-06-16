@@ -848,11 +848,12 @@ class NodeServer(LabradServer):
             list_tmp = [server for server, number in servers_ordered
                         if (server not in running) and (number == order_number)]
             server_startup_groups.append(tuple(list_tmp))
-        print('server startup groups: {}'.format(server_startup_groups))
+        print('Server startup groups: {}'.format(server_startup_groups))
 
         # start up servers within the same group simultaneously
         @inlineCallbacks
-        def start_server_group(dummy, _server_list):
+        def start_server_group(dummy, server_list):
+            print('Starting new server group: {}'.format(server_list))
             # start up servers
             deferreds = [(name, self.start(c, name)) for name in server_list]
             for name, deferred in deferreds:
@@ -862,38 +863,42 @@ class NodeServer(LabradServer):
                     self.logger.error('Failed to autostart "%s"', name, exc_info=True)
             # todo: ensure we check for new names that are what node should be
 
-            counter = 0
-            counter_max = 100
+            # adjust server names to include hostname
+            server_list_tmp = list(server_list)
+            for i, name in enumerate(server_list_tmp):
+                if 'Serial Server' in name:
+                    server_list_tmp[i] = socket.gethostname().lower() + ' Serial Server'
+                elif 'GPIB Bus' in name:
+                    server_list_tmp[i] = socket.gethostname() + ' GPIB Bus'
 
-            @inlineCallbacks
-            def check_started():
+            counter = [0]
+            counter_max = 100
+            finish_flag = False
+
+            # loop until we see all servers started
+            while finish_flag == False:
                 # get started servers
                 started_servers = yield self.client.manager.servers()
-                started_servers = set([server_ident[1] for server_ident in started_servers])
-                print('{:d}, started servers: {}'.format(self.counter, started_servers))
+                started_servers = [server_ident[1] for server_ident in started_servers]
+                #print('{:d}, started servers: {}'.format(counter, started_servers))
 
-                # check if target server group is started
-                all_started = list(map(lambda server_name: server_name in started_servers, server_list))
                 # move on if we get all servers or timeout
+                all_started = list(map(lambda server_name: server_name in started_servers, server_list_tmp))
                 if all(all_started):
-                    self.success = True
                     print("All servers started. Moving on to the next group.")
-                    return
-                elif counter >= counter_max:
+                    finish_flag = True
+                elif counter[0] >= counter_max:
                     print("Ordered autostart failed. Moving on to the next group.")
-                    return
+                    finish_flag = True
                 # otherwise call check_started again to check again
                 else:
-                    counter += 1
-                    reactor.callLater(1, check_started)
-            # start checking sequence
-            yield check_started()
-            print('server group finished')
+                    yield sleep(1)
+
             return dummy
 
         server_startup_initial = start_server_group(0, server_startup_groups[0])
+        #server_startup_initial.addCallback(start_server_group, server_startup_groups[1])
         for server_list in server_startup_groups[1:]:
-            print('starting new server group: {}'.format(server_list))
             server_startup_initial.addCallback(start_server_group, server_list)
 
     @setting(201, returns='*s')
