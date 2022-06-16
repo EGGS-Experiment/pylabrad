@@ -21,7 +21,6 @@ Superclass of generic device servers.
 
 from labrad import errors
 from labrad.server import LabradServer, setting
-from labrad.errors import Error
 from labrad.support import MultiDict
 
 from twisted.internet import defer, reactor
@@ -29,7 +28,7 @@ from twisted.internet.defer import inlineCallbacks, returnValue
 
 LOCK_TIMEOUT = 10
 
-class DeviceLockedError(Error):
+class DeviceLockedError(errors.Error):
     """The device is locked."""
     # TODO should tell who holds lock and when it expires
     code = 4

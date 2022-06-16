@@ -17,9 +17,10 @@
 labrad module for python.
 """
 
-from labrad import backend, client, constants
+from os import environ
+MANAGER_HOST = environ.get('LABRADHOST', 'localhost')
 
-def connect(host=constants.MANAGER_HOST, port=None, name=None, **kw):
+def connect(host=MANAGER_HOST, port=None, name=None, **kw):
     """Create a client connection to the labrad manager.
 
     Args:
@@ -39,6 +40,7 @@ def connect(host=constants.MANAGER_HOST, port=None, name=None, **kw):
         (client.Client): labrad client object after the connection has been
         established.
     """
+    from labrad import backend, client
     cxn = backend.connect(host=host, port=port, name=name, **kw)
     return client.Client(cxn)
 

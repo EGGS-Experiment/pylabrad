@@ -2,15 +2,19 @@
 
 Provides a backend connection that underlies the wrapper client object.
 """
-
 import threading
 import time
 
 from concurrent.futures import Future
-from twisted.internet import defer, reactor
+from twisted.internet import defer
 
-from labrad import concurrent, constants as C, support, thread, types as T
+from labrad import support
+from labrad import concurrent
+from labrad import types as T
+from labrad import constants as C
 from labrad.wrappers import getConnection
+
+__all__ = ["connect", "TwistedConnection", "ManagerService"]
 
 
 class TwistedConnection(object):
@@ -77,6 +81,7 @@ def connect(host=C.MANAGER_HOST, port=None, name=None, timeout=C.TIMEOUT, **kw):
     This connects to labrad asynchronously and then wraps the underlying async
     connection object in a synchronous TwistedConnection interface.
     """
+    from labrad import thread
     name = name or 'Python Client ({})'.format(support.getNodeName())
 
     thread.startReactor()

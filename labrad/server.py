@@ -22,10 +22,10 @@ servers with labrad.
 
 from datetime import datetime
 from operator import attrgetter
+import sys
+import logging
 import threading
 import traceback
-import logging
-import sys
 
 from concurrent import futures
 from twisted.internet import defer, reactor, threads
