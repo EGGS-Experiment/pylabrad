@@ -824,56 +824,65 @@ class NodeServer(LabradServer):
         the node first starts up, but can be invoked manually at any time
         thereafter.
         """
-        # get running servers
         running = set(s.server_name for s in self.instances.values())
-
-        # get all (server, order) pairs
-        # todo: only if autostart_ordered exists
-        servers_ordered = self.config.autostart_ordered
-        order_numbers = sorted(set([number for server, number in servers_ordered]))
-        server_startup_groups = []
-
-        # create lists of servers with the same startup order number
-        for order_number in order_numbers:
-            # ensure server is not already running
-            list_tmp = [server for server, _ in servers_ordered if server not in running]
-            server_startup_groups.append(list_tmp)
-
-        # start up servers within the same group simultaneously
-        @inlineCallbacks
-        def start_server_group(server_list):
-            # start up servers
-            deferreds = [(name, self.start(c, name)) for name in server_list]
-            for name, deferred in deferreds:
-                try:
-                    yield deferred
-                except Exception:
-                    logging.error('Failed to autostart "%s"', name, exc_info=True)
-
-            iterations_max = 100
-            started_flag = False
-            for i in range(iterations_max):
-                # get started servers
-                started_servers = yield self.client.manager.servers()
-                started_servers = set([server_ident[1] for server_ident in started_servers])
-                # check if target server group is started
-                all_started = list(map(lambda server_name: server_name in started_servers, server_list))
-                # move on if we get all servers
-                if all(all_started):
-                    started_flag = True
-                    break
-                else:
-                    yield sleep(1)
-
-            # print verification message
-            if started_flag:
-                print("All servers started. Moving on to the next group.")
-            else:
-                print("Autostart ordered failed. Moving on to the next group.")
-
-        for server_list in server_startup_groups:
-            print(server_list)
-            yield start_server_group(server_list)
+        to_start = [name for name in self.config.autostart
+                         if name not in running]
+        deferreds = [(name, self.start(c, name)) for name in to_start]
+        for name, deferred in deferreds:
+            try:
+                yield deferred
+            except Exception:
+                self.logger.error('Failed to autostart "%s"', name, exc_info=True)
+        # # get running servers
+        # running = set(s.server_name for s in self.instances.values())
+        #
+        # # get all (server, order) pairs
+        # # todo: only if autostart_ordered exists
+        # servers_ordered = self.config.autostart_ordered
+        # order_numbers = sorted(set([number for server, number in servers_ordered]))
+        # server_startup_groups = []
+        #
+        # # create lists of servers with the same startup order number
+        # for order_number in order_numbers:
+        #     # ensure server is not already running
+        #     list_tmp = [server for server, _ in servers_ordered if server not in running]
+        #     server_startup_groups.append(list_tmp)
+        #
+        # # start up servers within the same group simultaneously
+        # @inlineCallbacks
+        # def start_server_group(server_list):
+        #     # start up servers
+        #     deferreds = [(name, self.start(c, name)) for name in server_list]
+        #     for name, deferred in deferreds:
+        #         try:
+        #             yield deferred
+        #         except Exception:
+        #             logging.error('Failed to autostart "%s"', name, exc_info=True)
+        #
+        #     iterations_max = 100
+        #     started_flag = False
+        #     for i in range(iterations_max):
+        #         # get started servers
+        #         started_servers = yield self.client.manager.servers()
+        #         started_servers = set([server_ident[1] for server_ident in started_servers])
+        #         # check if target server group is started
+        #         all_started = list(map(lambda server_name: server_name in started_servers, server_list))
+        #         # move on if we get all servers
+        #         if all(all_started):
+        #             started_flag = True
+        #             break
+        #         else:
+        #             yield sleep(1)
+        #
+        #     # print verification message
+        #     if started_flag:
+        #         print("All servers started. Moving on to the next group.")
+        #     else:
+        #         print("Autostart ordered failed. Moving on to the next group.")
+        #
+        # for server_list in server_startup_groups:
+        #     print(server_list)
+        #     yield start_server_group(server_list)
 
     @setting(201, returns='*s')
     def autostart_list(self, c):
