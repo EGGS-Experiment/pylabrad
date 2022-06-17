@@ -814,9 +814,27 @@ class NodeServer(LabradServer):
         outputs something on its stdout, effectively giving a
         remote view of the server's console window.
         """
+    @setting(2000, returns='')
+    def autostart_ordered(self, c):
+        """Start all servers from the configured autostart list.
 
-    @setting(200, returns='')
-    def autostart(self, c):
+        Any servers that are already running will be left as is, while those
+        that are not yet running will be started. Autostart is triggered when
+        the node first starts up, but can be invoked manually at any time
+        thereafter.
+        """
+        running = set(s.server_name for s in self.instances.values())
+        to_start = [name for name in self.config.autostart
+                         if name not in running]
+        deferreds = [(name, self.start(c, name)) for name in to_start]
+        for name, deferred in deferreds:
+            try:
+                yield deferred
+            except Exception:
+                self.logger.error('Failed to autostart "%s"', name, exc_info=True)
+
+    @setting(2000, returns='')
+    def autostart_ordered(self, c):
         """Start all servers from the configured autostart list.
 
         Any servers that are already running will be left as is, while those
