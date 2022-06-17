@@ -814,8 +814,9 @@ class NodeServer(LabradServer):
         outputs something on its stdout, effectively giving a
         remote view of the server's console window.
         """
-    @setting(2000, returns='')
-    def autostart_ordered(self, c):
+
+    @setting(200, returns='')
+    def autostart(self, c):
         """Start all servers from the configured autostart list.
 
         Any servers that are already running will be left as is, while those
