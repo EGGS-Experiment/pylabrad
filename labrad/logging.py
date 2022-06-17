@@ -59,12 +59,18 @@ def setupLogging(
     # don't propagate log events to root logger
     logger.propagate = False
 
+    # todo: tmp
+    filter1 = logging.Filter(name='labrad')
+    logger.addFilter(filter1)
+
     # check if logger already has handlers; only keep loggers with same name
     handlers = {}
     for name, logger_class in logging.Logger.manager.loggerDict.items():
         if isinstance(logger_class, logging.Logger) and (name == logger_name):
             for log_handler in logger_class.handlers:
                 handlers[logger_name] = log_handler
+                # todo: if logger is not in proper namespaec, set log_obj.disabled = True
+                # alternatively, create logging filter object
 
 
     # create custom loghandler so logging labels are specific to each sender
