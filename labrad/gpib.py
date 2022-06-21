@@ -22,7 +22,10 @@ Superclass of GPIB device servers.
 from twisted.internet import defer
 from twisted.internet.defer import inlineCallbacks, returnValue
 
-from labrad import types as T, constants as C, errors
+from labrad import types as T
+from labrad import units as U
+from labrad import constants as C
+from labrad import errors
 from labrad.devices import DeviceWrapper, DeviceServer, DeviceLockedError
 from labrad.server import LabradServer, setting
 from labrad.support import MultiDict
@@ -42,7 +45,7 @@ class GPIBDeviceWrapper(DeviceWrapper):
         self.gpib = gpib # wrapper for the gpib server
         self.addr = addr
         self._context = gpib.context() # create a new context for this device
-        self._timeout = T.Value(C.TIMEOUT, 's')
+        self._timeout = U.Value(C.TIMEOUT, 's')
 
         # set the address and timeout in this context
         p = self._packet()
@@ -59,7 +62,7 @@ class GPIBDeviceWrapper(DeviceWrapper):
     @inlineCallbacks
     def timeout(self, seconds):
         """Set the GPIB timeout for this device."""
-        self._timeout = T.Value(seconds, 's')
+        self._timeout = U.Value(seconds, 's')
         p = self._packet()
         p.timeout(self._timeout)
         yield p.send()
