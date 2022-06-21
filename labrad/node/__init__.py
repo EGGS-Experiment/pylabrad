@@ -444,15 +444,13 @@ class NodeConfig(object):
 
         # load defaults (creating them if necessary)
         create = '__default__' not in dirs
-        defaults = ([], ['.ini', '.py'], [])
+        defaults = ([], ['.ini', '.py'], [], [])
         defaults = yield self._load('__default__', create, defaults)
-        # todo: autostart defaults
 
         # load this node (creating config if necessary)
         create = self.nodename not in dirs
         config = yield self._load(self.nodename, create, defaults)
         self._update(config, False)
-        # todo: autostart defaults
 
         # setup messages when registry changes
         self._reg.addListener(self._handleMessage, context=self._ctx)
@@ -475,7 +473,7 @@ class NodeConfig(object):
 
     @inlineCallbacks
     def _load(self, nodename=None, create=False, defaults=None):
-        """Load the current configuration out of the registry."""# todo: test
+        """Load the current configuration out of the registry."""
         p = self._packet()
         if nodename is not None:
             p.cd(['', 'Nodes', nodename], True)
@@ -483,6 +481,7 @@ class NodeConfig(object):
             p.set('directories', defaults[0])
             p.set('extensions', defaults[1])
             p.set('autostart', defaults[2])
+            p.set('autostart_ordered', defaults[3])
         # get values from registry
         p.get('directories', '*s', key='dirs')
         p.get('extensions', '*s', key='exts')
@@ -571,7 +570,12 @@ class NodeServer(LabradServer):
         """Initialize this server after connecting to the labrad manager."""
         self.config = yield NodeConfig.create(self)
         self.refreshServers()
+        print('autostart ordered len: ', len(self.config.autostart_ordered))
         self.autostart(None)
+        # if len(self.config.autostart_ordered) > 1:
+        #     self.autostart_ordered(None)
+        # else:
+        #     self.autostart(None)
 
     def stopServer(self):
         """Stop this node by killing all subprocesses."""
@@ -836,27 +840,17 @@ class NodeServer(LabradServer):
 
     @setting(2000, returns='')
     def autostart_ordered(self, c):
-        """Start all servers from the configured autostart list.
+        """Start all servers from the configured ordered autostart list.
 
         Any servers that are already running will be left as is, while those
         that are not yet running will be started. Autostart is triggered when
         the node first starts up, but can be invoked manually at any time
         thereafter.
         """
-        # to_start = [name for name in self.config.autostart
-        #                  if name not in running]
-        # deferreds = [(name, self.start(c, name)) for name in to_start]
-        # for name, deferred in deferreds:
-        #     try:
-        #         yield deferred
-        #     except Exception:
-        #         self.logger.error('Failed to autostart "%s"', name, exc_info=True)
-
         # get running servers
         running = set(s.server_name for s in self.instances.values())
 
         # get all (server, order) pairs
-        # todo: only if autostart_ordered exists
         servers_ordered = self.config.autostart_ordered
         order_numbers = sorted(set([number for server, number in servers_ordered]))
 
@@ -944,6 +938,7 @@ class NodeServer(LabradServer):
         except KeyError:
             pass
         yield self.config.update_autostart(sorted(autostart))
+        # todo: autostart_ordered
 
     @setting(300, returns='?')
     def outdated_list(self, c):
@@ -1047,7 +1042,6 @@ def configureLogging(options):
         # only option is UDP logging, but since UDP is connectionless there is
         # no way to tell if there is actually a syslog daemon listening.
         # https://docs.python.org/2/library/logging.handlers.html#sysloghandler
-        # todo: fix up and see if we can straight use config_opts
         config_opts['syslog'] = True
 
         if options['syslog_socket']:
@@ -1073,7 +1067,6 @@ def configureLogging(options):
         if options['syslog_rfc']:
             config_opts['syslog_rfc'] = '5424'
 
-    # todo: add logfile option to logging module
     if options['logfile']:
         file_handler = logging.handlers.RotatingFileHandler(
                 options['logfile'], maxBytes=800000, backupCount=5
