@@ -7,10 +7,10 @@ from time import sleep
 
 from twisted.internet import defer
 
-import labrad.constants as C
 import labrad.types as T
-from labrad import concurrent
+import labrad.constants as C
 from labrad import support
+from labrad import concurrent
 from labrad.wrappers import getConnection
 
 __all__ = ["connect", "TwistedConnection", "ManagerService"]

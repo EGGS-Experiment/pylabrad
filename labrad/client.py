@@ -21,12 +21,12 @@ Contains a blocking client connection to labrad.
 
 import warnings
 
-from labrad import constants as C
-from labrad import types as T
-from labrad.backend import ManagerService
+import labrad.types as T
+import labrad.constants as C
+
+import labrad.support
 from labrad.concurrent import map_future
-from labrad.support import (mangle, indent, PrettyMultiDict, FlatPacket,
-                            PacketRecord, PacketResponse, hexdump)
+from labrad.backend import ManagerService
 
 
 def unwrap(s, after='|'):
@@ -126,11 +126,11 @@ class SettingWrapper(object):
             |%s
             |
             |%s """) % (self._server.name, self.name, self.ID, self.description,
-                        indent('\n'.join(self.accepts)),
-                        indent('\n'.join(self.returns)), self.notes)
+                        support.('\n'.join(self.accepts)),
+                        support.('\n'.join(self.returns)), self.notes)
 
 
-class DynamicAttrDict(PrettyMultiDict):
+class DynamicAttrDict(support.PrettyMultiDict):
     _parent = None
 
     def __getitem__(self, key):
@@ -157,7 +157,7 @@ class HasDynamicAttrs(object):
         return self.__attrs
 
     def _fixName(self, name):
-        pyName = mangle(name)
+        pyName = support.mangle(name)
         if pyName in self._staticAttrs:
             pyName = 'lr_' + pyName
         return pyName
@@ -314,7 +314,7 @@ class ServerWrapper(HasDynamicAttrs):
             |
             |Settings:
             |%s""") % (self.name, self.ID, self.__doc__,
-                       indent(repr(self.settings)))
+                       support.(repr(self.settings)))
 
 
 class PacketWrapper(HasDynamicAttrs):
@@ -342,7 +342,7 @@ class PacketWrapper(HasDynamicAttrs):
         """Send this packet to the server and get the result as a future."""
         records = [(rec.ID, rec.flat) for rec in self._packet]
         f = self._server._send(records, **dict(self._kw, **kw))
-        f = map_future(f, PacketResponse, self._server, self._packet)
+        f = map_future(f, support.PacketResponse, self._server, self._packet)
         return f
 
     @property
@@ -362,7 +362,7 @@ class PacketWrapper(HasDynamicAttrs):
             if context is None:
                 context = (self._server._cxn.ID, 0)
         records = tuple((rec.name, rec.flat) for rec in self._packet)
-        return FlatPacket(context, self._server.name, records)
+        return support.FlatPacket(context, self._server.name, records)
 
     _staticAttrs = ['settings', 'send', 'send_future', 'to_cluster']
 
@@ -384,7 +384,7 @@ class PacketWrapper(HasDynamicAttrs):
             elif len(args) == 1:
                 args = args[0]
             flat = T.flatten(args, tag)
-            rec = PacketRecord(ID=s.ID, data=args, tag=tag, flat=flat, key=key,
+            rec = support.PacketRecord(ID=s.ID, data=args, tag=tag, flat=flat, key=key,
                                name=name)
             self._packet.append(rec)
             return self
@@ -409,7 +409,7 @@ class PacketWrapper(HasDynamicAttrs):
         if all((ord(x) > 31 and ord(x) < 127) or x.isspace() for x in data): # Is string printable ascii
             return data
         else:
-            return hexdump(data)
+            return support.hexdump(data)
 
     def _recordRepr(self, rec, short=False):
         """Create a string representation of a packet record.
@@ -437,7 +437,7 @@ class PacketWrapper(HasDynamicAttrs):
             |Packet for server: '%s'
             |
             |Data:
-            |%s""") % (self._server.name, indent(data_str))
+            |%s""") % (self._server.name, support.(data_str))
 
 
 class Client(HasDynamicAttrs):
@@ -532,7 +532,7 @@ class Client(HasDynamicAttrs):
                 |
                 |Available servers:
                 |%s""") % (self.name, self.host, self.port,
-                           indent(repr(self.servers)))
+                           support.(repr(self.servers)))
         else:
             return unwrap("""\
                 |LabRAD Client: '%s'

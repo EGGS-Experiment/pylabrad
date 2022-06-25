@@ -18,6 +18,7 @@ labrad.devices
 
 Superclass of generic device servers.
 """
+# todo: move to language section
 
 from twisted.internet import defer, reactor
 from twisted.internet.defer import inlineCallbacks, returnValue

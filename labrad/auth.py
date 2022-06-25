@@ -1,6 +1,5 @@
 import getpass
-
-from labrad import constants
+from labrad import constants as C
 
 
 class Password(object):
@@ -32,11 +31,11 @@ def get_password(host=None, port=None, user=None, prompt=True):
     """
     _init_password_cache()
     if host is None:
-        host = constants.MANAGER_HOST
+        host = C.MANAGER_HOST
     if port is None:
-        port = constants.MANAGER_PORT
+        port = C.MANAGER_PORT
     if user is None:
-        user = constants.USERNAME or ''
+        user = C.USERNAME or ''
     addr = (host, port)
     if addr in _password_cache and user in _password_cache[addr]:
         return _password_cache[addr][user]
@@ -64,9 +63,9 @@ def get_username_and_password(host, port, prompt=True):
     """
     _init_password_cache()
     if host is None:
-        host = constants.MANAGER_HOST
+        host = C.MANAGER_HOST
     if port is None:
-        port = constants.MANAGER_PORT
+        port = C.MANAGER_PORT
     addr = (host, port)
     if addr in _password_cache and _password_cache[addr]:
         passwords = _password_cache[addr]
@@ -109,11 +108,11 @@ def _prompt_for_password(host, port, user):
 
 def _init_password_cache():
     """Create cache entries for the environment password if needed."""
-    if not _password_cache and constants.PASSWORD is not None:
-        credential = Password(constants.USERNAME, constants.PASSWORD)
-        cache_password(constants.MANAGER_HOST,
-                       constants.MANAGER_PORT,
+    if not _password_cache and C.PASSWORD is not None:
+        credential = Password(C.USERNAME, C.PASSWORD)
+        cache_password(C.MANAGER_HOST,
+                       C.MANAGER_PORT,
                        credential)
-        cache_password(constants.MANAGER_HOST,
-                       constants.MANAGER_PORT_TLS,
+        cache_password(C.MANAGER_HOST,
+                       C.MANAGER_PORT_TLS,
                        credential)

@@ -18,9 +18,9 @@ import functools
 from twisted.internet import defer
 from twisted.internet.defer import inlineCallbacks, returnValue
 
-from labrad import constants as C, manager, protocol, support, types as T
-from labrad.support import (indent, mangle, extractKey, MultiDict, PacketRecord,
-                            PacketResponse, hexdump)
+from labrad import types as T
+from labrad import constants as C
+from labrad import manager, protocol, support
 
 
 class AsyncSettingWrapper(object):
@@ -43,7 +43,7 @@ class AsyncSettingWrapper(object):
     @inlineCallbacks
     def __call__(self, *args, **kw):
         """Send a request to this setting."""
-        tag = extractKey(kw, 'tag', None) or self.accepts
+        tag = support.extractKey(kw, 'tag', None) or self.accepts
         if len(args) == 0:
             args = None
         elif len(args) == 1:
@@ -119,14 +119,14 @@ class AsyncPacketWrapper(object):
             method = cls._cache[setting.name]
         else:
             def method(self, *args, **kw):
-                key = extractKey(kw, 'key', None)
-                tag = extractKey(kw, 'tag', None) or setting.accepts
+                key = support.extractKey(kw, 'key', None)
+                tag = support.extractKey(kw, 'tag', None) or setting.accepts
                 if len(args) == 0:
                     args = None
                 elif len(args) == 1:
                     args = args[0]
                 flat = T.flatten(args, tag)
-                rec = PacketRecord(ID=setting.ID, data=args, tag=tag, flat=flat,
+                rec = support.PacketRecord(ID=setting.ID, data=args, tag=tag, flat=flat,
                                    key=key, name=setting.name)
                 self._packet.append(rec)
                 return self
@@ -159,7 +159,7 @@ class AsyncPacketWrapper(object):
         # drop keys from records before sending
         records = [(rec.ID, rec.flat) for rec in self._packet]
         r = yield self._server._send(records, **dict(self._kw, **kw))
-        returnValue(PacketResponse(r, self._server, self._packet))
+        returnValue(support.PacketResponse(r, self._server, self._packet))
 
     def _bind(self, method):
         """Bind a method to this instance."""
@@ -202,7 +202,7 @@ class AsyncPacketWrapper(object):
         if all((ord(x) > 31 and ord(x) < 127) or x.isspace() for x in data): # Is string printable ascii
             return data
         else:
-            return hexdump(data)
+            return support.hexdump(data)
 
     def _recordRepr(self, rec, short=False):
         """Create a string representation of a packet record.
@@ -230,7 +230,7 @@ class AsyncPacketWrapper(object):
             |Packet for server: '%s'
             |
             |Data:
-            |%s""") % (self._server.name, indent(data_str))
+            |%s""") % (self._server.name, support.indent(data_str))
 
     # TODO implement flattened versions of packet object to allow for packet forwarding
     # naively, this can be done just by converting to a tuple of setting/parameter tuples,
@@ -251,7 +251,7 @@ def unwrap(s, after='|'):
 def makePacketWrapperClass(server):
     """Make a new packet wrapper class for a particular server."""
     class CustomPacketWrapper(AsyncPacketWrapper):
-        settings = MultiDict()
+        settings = support.MultiDict()
         _server = server
         _cache = {}
     return CustomPacketWrapper
@@ -266,7 +266,7 @@ class AsyncServerWrapper(object):
         self.name = self._labrad_name = name
         self._py_name = pyName
         self.ID = ID
-        self.settings = MultiDict()
+        self.settings = support.MultiDict()
         self._cache = {}
         self._packetWrapperClass = makePacketWrapperClass(self)
         self._refreshLock = defer.DeferredLock()
@@ -297,7 +297,7 @@ class AsyncServerWrapper(object):
                     'sendMessage', 'addListener', 'removeListener']
 
     def _fixName(self, name):
-        pyName = mangle(name)
+        pyName = support.mangle(name)
         if pyName in self._staticAttrs:
             pyName = 'lr_' + pyName
         return pyName
@@ -353,7 +353,7 @@ class AsyncServerWrapper(object):
 
     def sendMessage(self, ID, *args, **kw):
         """Send a message to this server."""
-        tag = extractKey(kw, 'tag', [])
+        tag = support.extractKey(kw, 'tag', [])
         if len(args) == 0:
             args = None
         elif len(args) == 1:
@@ -430,7 +430,7 @@ class ClientAsync(object):
         returnValue(cxn)
 
     def __init__(self, prot):
-        self.servers = MultiDict()
+        self.servers = support.MultiDict()
         self._cache = {}
         self._cxn = prot
         self._mgr = manager.AsyncManager(self._cxn)
@@ -502,7 +502,7 @@ class ClientAsync(object):
         yield defer.DeferredList(actions, fireOnOneErrback=True)
 
     def _fixName(self, name):
-        pyName = mangle(name)
+        pyName = support.mangle(name)
         if pyName in self._staticAttrs:
             pyName = 'lr_' + pyName
         return pyName
