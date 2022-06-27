@@ -24,7 +24,7 @@ import warnings
 import labrad.types as T
 import labrad.constants as C
 
-import labrad.support
+from labrad import support
 from labrad.concurrent import map_future
 from labrad.backend import ManagerService
 
@@ -126,8 +126,8 @@ class SettingWrapper(object):
             |%s
             |
             |%s """) % (self._server.name, self.name, self.ID, self.description,
-                        support.('\n'.join(self.accepts)),
-                        support.('\n'.join(self.returns)), self.notes)
+                        support.indent('\n'.join(self.accepts)),
+                        support.indent('\n'.join(self.returns)), self.notes)
 
 
 class DynamicAttrDict(support.PrettyMultiDict):
@@ -314,7 +314,7 @@ class ServerWrapper(HasDynamicAttrs):
             |
             |Settings:
             |%s""") % (self.name, self.ID, self.__doc__,
-                       support.(repr(self.settings)))
+                       support.indent(repr(self.settings)))
 
 
 class PacketWrapper(HasDynamicAttrs):
@@ -437,7 +437,7 @@ class PacketWrapper(HasDynamicAttrs):
             |Packet for server: '%s'
             |
             |Data:
-            |%s""") % (self._server.name, support.(data_str))
+            |%s""") % (self._server.name, support.indent(data_str))
 
 
 class Client(HasDynamicAttrs):
@@ -532,7 +532,7 @@ class Client(HasDynamicAttrs):
                 |
                 |Available servers:
                 |%s""") % (self.name, self.host, self.port,
-                           support.(repr(self.servers)))
+                           support.indent(repr(self.servers)))
         else:
             return unwrap("""\
                 |LabRAD Client: '%s'
