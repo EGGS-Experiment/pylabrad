@@ -254,7 +254,7 @@ class ManagedDeviceServer(LabradServer):
             names = self.deviceName
             if isinstance(names, str):
                 names = [names]
-            self.deviceWrappers = dict((name, self.deviceWrapper) for name in names)
+            self.deviceWrappers = dict((name.upper(), self.deviceWrapper) for name in names)
         LabradServer.__init__(self)
 
     @inlineCallbacks
@@ -495,8 +495,15 @@ class GPIBManagedServer(ManagedDeviceServer):
     deviceManager = 'GPIB Device Manager'
     deviceName = 'Generic GPIB Device'
     deviceWrapper = GPIBDeviceWrapper
-    # server settings
 
+
+    def __init__(self):
+        super().__init__()
+        # convert all device names to uppercase
+        corrected_dict = {key.upper(): value for key, value in self.deviceWrappers.items()}
+        self.deviceWrappers = corrected_dict
+
+    # server settings
     @setting(1001, 'GPIB Write', string='s', timeout='v[s]', returns='')
     def gpib_write(self, c, string, timeout=None):
         """Write a string to the device over GPIB."""
