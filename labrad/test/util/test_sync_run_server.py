@@ -1,6 +1,5 @@
-import threading
-
 import pytest
+import threading
 
 from labrad import util
 from labrad.server import LabradServer
@@ -21,6 +20,7 @@ def test_sync_run_server():
         pass
     if not event.wait(0.5):
         raise Exception('event not set in stopServer method')
+
 
 if __name__ == '__main__':
     pytest.main(['-v', __file__])

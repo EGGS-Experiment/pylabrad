@@ -99,3 +99,7 @@ Thumbs.db
 .project
 .pydevproject
 .settings/
+
+# compiled python files
+*.py[cod]
+**/__pycache__

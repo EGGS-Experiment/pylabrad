@@ -1,11 +1,11 @@
 from concurrent.futures import Future
 
 import pytest
-from twisted.internet import defer, reactor
 from twisted.python import threadable
+from twisted.internet import defer, reactor
 
-import labrad.concurrent as concurrent
-import labrad.thread as thread
+from labrad import thread
+from labrad import concurrent
 
 
 def test_map_future():

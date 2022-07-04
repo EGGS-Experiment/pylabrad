@@ -1,3 +1,9 @@
+"""
+labrad.logging
+
+Contains functions to set up logging.
+"""
+
 import os
 import sys
 import logging
@@ -30,6 +36,7 @@ class _LoggerWriter:
 def setupLogging(
         logger_name, sender=None, extraDict=None,
         logHandlers=None, log_level=logging.DEBUG,
+        logfile=None,
         syslog=True, syslog_rfc='5424',
         syslog_socket=(os.environ['LABRADHOST'], os.environ['EGGS_LABRAD_SYSLOG_PORT'])
     ):
@@ -41,61 +48,74 @@ def setupLogging(
         extraDict       : the logging dict to send with each log.
         logHandlers     : extra handlers to send the logger.
         log_level       : the default logging level.
+        logfile         : the directory to create a logfile in.
         syslog          : whether to create syslog handlers.
         syslog_rfc      : the RFC standard for syslog.
         syslog_socket   : the syslog socket to log to if syslog is True.
     """
     from socket import SOCK_STREAM, gethostname
-    from logging.handlers import SysLogHandler
 
-    # get default arguments
+    # ensure we can create a custom loghandler with labels specific to each sender
     if (sender is None) and (extraDict is None):
         raise Exception("Either sender or extraDict must be specified.")
-
-    # create and configure logger
-    logging.basicConfig(level=log_level, handlers=None)
-    logger = logging.getLogger(logger_name)
-
-    # don't propagate log events to root logger
-    logger.propagate = False
-
-    # check if logger already has handlers; only keep loggers with same name
-    handlers = {}
-    for name, logger_obj in logging.Logger.manager.loggerDict.items():
-        if isinstance(logger_obj, logging.Logger) and (name == logger_name):
-            for log_handler in logger_obj.handlers:
-                handlers[logger_name] = log_handler
-        # otherwise, if logger is not in proper namespaec, set log_obj.disabled = True
-        elif isinstance(logger_obj, logging.Logger) and ('labrad' not in name):
-            logger_obj.disabled = True
-
-    # create custom loghandler so logging labels are specific to each sender
-    if extraDict is None:
+    elif extraDict is None:
         extraDict = {
             'sender_host': gethostname(),
             'sender_name': sender.__class__.__name__,
         }
 
-    # turn extraDict into structured_data for rfc5424
-    structured_data = {'sender': extraDict.copy()}
-    extraDict.update({'structured_data': structured_data})
+    # create and configure logger
+    logging.basicConfig(level=log_level, handlers=None)
+    logger = logging.getLogger(logger_name)
+    logger.propagate = False
 
-    # only add handlers if we don't already have some
-    if (len(handlers) == 0):
+    # remove any existing loggers, keeping only those related to labrad
+    handlers = []
+    for name, logger_obj in logging.Logger.manager.loggerDict.items():
+        # check log handlers have already been specified
+        if isinstance(logger_obj, logging.Logger) and (name == logger_name):
+            for log_handler in logger_obj.handlers:
+                handlers.add(log_handler)
+        # otherwise, turn off any loggers that aren't labrad related
+        elif isinstance(logger_obj, logging.Logger) and ('labrad' not in name):
+            logger_obj.disabled = True
+
+    # add extra log handlers
+    for log_handler in logHandlers:
+        try:
+            logger.addHandler(log_handler)
+        except Exception as e:
+            print(e)
+            print("Error: unable to add log_handler {}.".format(log_handler))
+
+    # only add core handlers if they don't already exist
+    # this prevents the duplication of log messages
+    if len(handlers) == 0:
+
         # create console handler
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setFormatter(labradLogFormatter)
         logger.addHandler(console_handler)
 
+        # create logfile
+        if logfile is not None:
+            from logging.handlers import FileHandler
+            logfile_handler = FileHandler(logfile)
+            logfile_handler.setFormatter(labradLogFormatter)
+            logger.addHandler(logfile_handler)
+
         if syslog:
-            # create syslog handler
+            # create syslog handler for RFC3164
             if syslog_rfc == '3164':
+                # todo: add extradict to this syslog handler
+                from logging.handlers import SysLogHandler
                 syslog_handler = SysLogHandler(address=syslog_socket)
                 syslog_handler.setFormatter(labradLogFormatter)
                 logger.addHandler(syslog_handler)
+                return logger
 
-            # create rfc5424 handler
-            if syslog_rfc == '5424':
+            # create syslog handler for RFC5424
+            elif syslog_rfc == '5424':
                 try:
                     from rfc5424logging import Rfc5424SysLogHandler
                     syslog5424_handler = Rfc5424SysLogHandler(
@@ -104,21 +124,15 @@ def setupLogging(
                         enterprise_id=88888
                     )
                     logger.addHandler(syslog5424_handler)
+
+                    from rfc5424logging.adapter import Rfc5424SysLogAdapter
+                    # turn extraDict into structured_data for rfc5424
+                    structured_data = {'sender': extraDict.copy()}
+                    extraDict.update({'structured_data': structured_data})
+                    logger_adapter = Rfc5424SysLogAdapter(logger, extraDict)
+                    return logger_adapter
                 except ImportError:
                     print("Error: RFC5424 syslog handler module is not installed.")
                 except Exception as e:
                     print(e)
                     print("Error: unable to create RFC5424 syslog handler.")
-
-    # adapt logger and return
-    if syslog_rfc == '5424':
-        try:
-            from rfc5424logging.adapter import Rfc5424SysLogAdapter
-            logger_adapter = Rfc5424SysLogAdapter(logger, extraDict)
-            return logger_adapter
-        except ImportError:
-            print("Error: RFC5424 syslog handler module is not installed.")
-        except Exception as e:
-            print("Error: unable to create RFC5424 syslog handler.")
-    elif syslog_rfc == '3164':
-        return logger

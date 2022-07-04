@@ -7,8 +7,8 @@ import sys
 import time
 
 import labrad
-from labrad.servers import test_server
 from labrad.test import util
+from labrad.test.server import test_server
 
 # Directory where test servers are located.
 SERVERS_DIR = os.path.dirname(test_server.__file__)

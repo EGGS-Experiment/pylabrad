@@ -30,7 +30,8 @@ from twisted.python import log
 
 import labrad.constants as C
 import labrad.types as T
-from labrad import auth, crypto, errors, oauth, util
+from labrad import errors, util
+from labrad.protocol import crypto, auth, oauth
 from labrad.stream import packetStream, flattenPacket
 
 

@@ -20,7 +20,8 @@ from twisted.internet.defer import inlineCallbacks, returnValue
 
 from labrad import types as T
 from labrad import constants as C
-from labrad import manager, protocol, support
+from labrad import manager, support
+from labrad.protocol import protocol
 
 
 class AsyncSettingWrapper(object):

@@ -1,6 +1,8 @@
 import getpass
 from labrad import constants as C
 
+__all__ = ["Password", "get_password", "get_username_and_password", "cache_password", "_prompt_for_password", "_init_password_cache"]
+
 
 class Password(object):
     def __init__(self, username='', password=''):

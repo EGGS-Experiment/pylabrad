@@ -23,8 +23,8 @@ servers with labrad.
 import sys
 import threading
 import traceback
-from concurrent import futures
 from datetime import datetime
+from concurrent import futures
 from operator import attrgetter
 
 from twisted.internet import defer, reactor, threads
@@ -343,7 +343,7 @@ class LabradServer(object):
         server.
 
         Args:
-            protocol (labrad.protocol.LabradProtocol): A protocol connection
+            protocol (labrad.protocol.protocol.LabradProtocol): A protocol connection
                 to the labrad manager, as returned by labrad.protocol.connect.
                 This protocol must have been authenticated prior to calling
                 startup.

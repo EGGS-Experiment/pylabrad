@@ -4,7 +4,6 @@
 # fixing the implementation resulted in a substantial performance gain.
 
 import time
-
 import numpy as np
 
 from labrad import types

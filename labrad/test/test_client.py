@@ -1,15 +1,16 @@
-import contextlib
-
 import pytest
+import contextlib
 
 import labrad
 from labrad import types as T
-from labrad.servers.test_server import PythonTestServer
 from labrad.util import syncRunServer
+from labrad.test.server.test_server import PythonTestServer
 
 TEST_STR = 'this is a test, this is only a test'
 
+
 class TestClient:
+
     def setup_class(cls):
         cls.exit_stack = contextlib.ExitStack()
         cls.exit_stack.enter_context(syncRunServer(PythonTestServer()))

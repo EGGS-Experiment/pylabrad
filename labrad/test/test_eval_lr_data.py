@@ -1,8 +1,7 @@
 import math
-
 import pytest
 
-import labrad.types as T
+from labrad import types as T
 from labrad.units import Complex, Value
 
 

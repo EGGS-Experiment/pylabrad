@@ -1,6 +1,6 @@
 import pytest
 
-from labrad import crypto
+from labrad.protocol import crypto
 
 
 def test_fingerprint():

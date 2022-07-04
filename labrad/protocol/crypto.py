@@ -1,8 +1,8 @@
+import os
+import re
 import base64
 import hashlib
 import logging
-import os
-import re
 
 from twisted.internet import ssl
 

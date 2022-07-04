@@ -1,5 +1,4 @@
 import queue
-
 import pytest
 
 import labrad

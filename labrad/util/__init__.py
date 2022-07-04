@@ -13,18 +13,18 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import contextlib
-import logging
 import os
 import re
 import sys
 import textwrap
+import contextlib
 
 from twisted.internet import defer, reactor
 from twisted.internet.defer import inlineCallbacks, returnValue
 from twisted.internet.threads import blockingCallFromThread
 
-from labrad import constants as C, thread
+from labrad import thread
+from labrad import constants as C
 from labrad.logging import setupLogging
 from labrad.support import getNodeName
 from labrad.util.unwrap import unwrap
@@ -257,6 +257,7 @@ def maybeTimeout(deferred, timeout, timeoutResult):
                                               consumeErrors=True)
     returnValue(result)
 
+
 class DeferredSignal(object):
     """An object that can create multiple deferreds on demand.
 
@@ -383,7 +384,7 @@ def runServer(srv, run_reactor=True, stop_reactor=True):
             server instance shuts down (whether normally or due to an error
             condition. Otherwise, the caller must arrange to call reactor.stop.
     """
-    from labrad import protocol
+    from labrad.protocol import protocol
 
     config = parseServerOptions(name=srv.name)
     updateServerOptions(srv, config)
@@ -423,7 +424,7 @@ def syncRunServer(srv, host=C.MANAGER_HOST, port=None, username=None,
     will yield when the server has started and then shut the server down after
     the context is exited.
     """
-    from labrad import protocol
+    from labrad.protocol import protocol
 
     tls_mode = C.check_tls_mode(tls_mode)
 

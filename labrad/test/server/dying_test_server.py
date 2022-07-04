@@ -132,8 +132,10 @@ class DyingTestServer(LabradServer):
     def bad_return_type(self, c, data):
         return 5
 
+
 def owie(dummy=None):
     raise Exception('Raised in subfunction.')
+
 
 if __name__ == '__main__':
     from labrad import util

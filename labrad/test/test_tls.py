@@ -9,7 +9,7 @@ import time
 import pytest
 
 import labrad
-from labrad import crypto
+from labrad.protocol import crypto
 
 IN_CI = os.environ.get('CI', False)
 ci_only = pytest.mark.skipif(not IN_CI, reason='only runs in CI')
