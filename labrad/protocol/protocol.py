@@ -28,8 +28,9 @@ from twisted.internet import reactor, protocol, defer
 from twisted.internet.defer import inlineCallbacks, returnValue
 from twisted.python import log
 
-import labrad.constants as C
 import labrad.types as T
+import labrad.constants as C
+
 from labrad import errors, util
 from labrad.protocol import crypto, auth, oauth
 from labrad.stream import packetStream, flattenPacket

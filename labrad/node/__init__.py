@@ -79,9 +79,9 @@ from time import sleep
 from datetime import datetime
 
 from twisted.internet import defer, reactor
+from twisted.internet.protocol import ProcessProtocol
 from twisted.internet.defer import inlineCallbacks, returnValue
 from twisted.internet.error import ProcessDone, ProcessTerminated
-from twisted.internet.protocol import ProcessProtocol
 
 from twisted.python.runtime import platformType
 
@@ -90,7 +90,9 @@ import labrad.support
 import labrad.types as T
 import labrad.constants as C
 
-from labrad import protocol, util
+#from labrad import protocol, util
+from labrad import util
+from labrad.protocol import protocol
 from labrad.node import server_config
 from labrad.logging import setupLogging
 from labrad.server import LabradServer, setting
@@ -1018,7 +1020,7 @@ def get_argparser():
     logging_group = parser.add_argument_group("logging")
     logging_group.add_argument("-v", "--verbose", default=logging.INFO,
                        help="set the logging level for the node (default: '%(default)s')")
-    logging_group.add_argument("-l", "--logfile", default=os.environ["HOME"],
+    logging_group.add_argument("-l", "--logfile", default=None,
                        help="log to a logfile in the specified directory (default: '%(default)s')")
     logging_group.add_argument("-s", "--syslog", default=True,
                         help="enable syslog (default: %(default)s)")
@@ -1044,11 +1046,10 @@ def main():
     # massage argparse options into arguments of setupLogging
     logging_args['log_level'] = logging_args.pop('verbose')
     if logging_args['syslog']:
-        logging_args['syslog_socket'] = args.syslog_socket.split(':')
-
+        logging_args['syslog_socket'] = tuple(args.syslog_socket.split(':'))
 
     # create logger!
-    node_log = setupLogging('labrad.node', extraDict=_extraDict, **vars(args))
+    node_log = setupLogging('labrad.node', extraDict=_extraDict, **logging_args)
 
     # construct a TCPServer from a LabRAD node
     service = Node(args.name, args.host, args.port,

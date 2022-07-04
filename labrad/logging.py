@@ -35,7 +35,7 @@ class _LoggerWriter:
 
 def setupLogging(
         logger_name, sender=None, extraDict=None,
-        logHandlers=None, log_level=logging.DEBUG,
+        logHandlers=[], log_level=logging.DEBUG,
         logfile=None,
         syslog=True, syslog_rfc='5424',
         syslog_socket=(os.environ['LABRADHOST'], os.environ['EGGS_LABRAD_SYSLOG_PORT'])
@@ -75,7 +75,7 @@ def setupLogging(
         # check log handlers have already been specified
         if isinstance(logger_obj, logging.Logger) and (name == logger_name):
             for log_handler in logger_obj.handlers:
-                handlers.add(log_handler)
+                handlers.append(log_handler)
         # otherwise, turn off any loggers that aren't labrad related
         elif isinstance(logger_obj, logging.Logger) and ('labrad' not in name):
             logger_obj.disabled = True
@@ -112,7 +112,6 @@ def setupLogging(
                 syslog_handler = SysLogHandler(address=syslog_socket)
                 syslog_handler.setFormatter(labradLogFormatter)
                 logger.addHandler(syslog_handler)
-                return logger
 
             # create syslog handler for RFC5424
             elif syslog_rfc == '5424':
@@ -124,15 +123,21 @@ def setupLogging(
                         enterprise_id=88888
                     )
                     logger.addHandler(syslog5424_handler)
-
-                    from rfc5424logging.adapter import Rfc5424SysLogAdapter
-                    # turn extraDict into structured_data for rfc5424
-                    structured_data = {'sender': extraDict.copy()}
-                    extraDict.update({'structured_data': structured_data})
-                    logger_adapter = Rfc5424SysLogAdapter(logger, extraDict)
-                    return logger_adapter
                 except ImportError:
                     print("Error: RFC5424 syslog handler module is not installed.")
                 except Exception as e:
                     print(e)
                     print("Error: unable to create RFC5424 syslog handler.")
+
+    # adapt logger and return
+    if syslog and (syslog_rfc == '5424'):
+        try:
+            from rfc5424logging.adapter import Rfc5424SysLogAdapter
+            logger_adapter = Rfc5424SysLogAdapter(logger, extraDict)
+            return logger_adapter
+        except ImportError:
+            print("Error: RFC5424 syslog handler module is not installed.")
+        except Exception as e:
+            print("Error: unable to create RFC5424 syslog handler.")
+    else:
+        return logger
