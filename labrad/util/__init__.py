@@ -20,14 +20,14 @@ import textwrap
 import contextlib
 
 from twisted.internet import defer, reactor
-from twisted.internet.defer import inlineCallbacks, returnValue
 from twisted.internet.threads import blockingCallFromThread
+from twisted.internet.defer import inlineCallbacks, returnValue
 
 from labrad import thread
 from labrad import constants as C
-from labrad.logging import setupLogging
-from labrad.support import getNodeName
 from labrad.util.unwrap import unwrap
+from labrad.support import getNodeName
+from labrad.logging import setupLogging
 
 
 def fancyHelp(ID, name, accepts, returns, units, about):

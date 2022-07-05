@@ -26,12 +26,12 @@ import traceback
 
 from twisted.internet import reactor, protocol, defer
 from twisted.internet.defer import inlineCallbacks, returnValue
-from twisted.python import log
 
 import labrad.types as T
 import labrad.constants as C
 
 from labrad import errors, util
+from labrad.logging import setupLogging
 from labrad.protocol import crypto, auth, oauth
 from labrad.stream import packetStream, flattenPacket
 
@@ -50,6 +50,8 @@ class LabradProtocol(protocol.Protocol):
         self.clearCache()
         self.endianness = '>'
         self.request_handler = None
+        # set up logging
+        self.log = setupLogging('labrad.protocol', sender=self)
         # create a generator to assemble the packets
         self.packetStream = packetStream(self.packetReceived, self.endianness)
         next(self.packetStream) # start the packet stream
@@ -245,7 +247,7 @@ class LabradProtocol(protocol.Protocol):
         """Process incoming request."""
         try:
             if self.request_handler is None:
-                log.msg('server request_handler not set')
+                self.log.msg('server request_handler not set')
                 raise Exception('server request_handler not set')
             response = yield self.request_handler(source, context, flat_records)
             self.sendPacket(source, context, -request, response)
@@ -268,8 +270,8 @@ class LabradProtocol(protocol.Protocol):
         else:
             # probably a response for a request that has already
             # timed out.  If not, something bad has happened.
-            log.msg('Invalid response: %s, %s, %s, %s' % \
-                    (source, context, request, records))
+            self.log.msg('Invalid response: %s, %s, %s, %s' % \
+                    (source, context, request, flat_records))
 
     def messageReceived(self, source, context, flat_records):
         """Process incoming messages."""
