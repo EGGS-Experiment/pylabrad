@@ -90,8 +90,9 @@ import labrad.support
 import labrad.types as T
 import labrad.constants as C
 
-#from labrad import protocol, util
+
 from labrad import util
+from labrad.util import mux
 from labrad.protocol import protocol
 from labrad.node import server_config
 from labrad.logging import setupLogging
