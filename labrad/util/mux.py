@@ -1,6 +1,7 @@
 from twisted.internet import defer
+from labrad.util import wakeupCall
 
-from labrad import util
+__all__ = ["after", "select"]
 
 
 def after(delay):
@@ -8,7 +9,7 @@ def after(delay):
 
     This can be useful to implement a "timeout" option when calling select.
     """
-    return util.wakeupCall(delay)
+    return wakeupCall(delay)
 
 
 def select(options):

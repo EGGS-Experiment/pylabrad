@@ -53,8 +53,8 @@ The version included with LabRAD has been slightly changed:
 """
 
 import itertools
-from fractions import Fraction
 from math import floor, pi
+from fractions import Fraction
 
 import numpy as np
 

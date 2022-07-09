@@ -1,4 +1,4 @@
-''' unwrap.py -- a function that makes every paragraph in a text into a single long line
+""" unwrap.py -- a function that makes every paragraph in a text into a single long line
                   so that the text will look right in a "word wrapping" environment
                   (e.g. a word processor, HTML text box or a Palm Doc document).
 
@@ -15,7 +15,7 @@
 
         @    .  .
     glyn wave co nz
-'''
+"""
 #
 # LICENCE
 #     This file is free software; you can redistribute it and/or modify
@@ -38,14 +38,14 @@ __all__ = ['unwrap']
 import re
 
 def unwrap(text):
-    ''' unwrap (text : string) -> string
+    """ unwrap (text : string) -> string
         A function that makes every paragraph in a text into a single long line
         so that the text will look right in a "word wrapping" environment
-        (e.g. a word processor, HTML text box or a Palm Doc document). '''
+        (e.g. a word processor, HTML text box or a Palm Doc document). """
     return paragraph.sub(unwrap_para, text)
 
 def regex(s):
-    ''' Compile a regex using a "little language" of symbolic names. '''
+    """ Compile a regex using a "little language" of symbolic names. """
     for name, expr in names.items():
         s = s.replace(name, expr)
     return re.compile(s, re.DOTALL | re.MULTILINE | re.VERBOSE)
@@ -55,10 +55,10 @@ names = {'space':    r'[ \t]',
          'newline':  r'\n'
      }
 
-paragraph = regex('''
+paragraph = regex("""
   ^ ( space+ ) ( text (?: newline text )+ ) $               # indented
 | ^ ( space* newline | ^) ( text (?: newline text )+ ) $    # blank-line seperated
-''')
+""")
 
 whitespace = re.compile(r'\s+', re.DOTALL)
 

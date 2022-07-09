@@ -24,11 +24,13 @@
 # x be an array of equally spaced elements, which can be uniquely described by the
 # the first and last elements, and the length.
 
+from numpy import asarray
+from threading import RLock
 from collections import namedtuple
 from functools import update_wrapper
-from threading import RLock
 
-import numpy as np
+__all__ = ["lru_cache"]
+
 
 _CacheInfo = namedtuple("CacheInfo", ["hits", "misses", "maxsize", "currsize"])
 
@@ -82,7 +84,7 @@ def keyfunc_ndarray(a):
     Uses the string representation of the raw data,
     and uses the fast_str hash function for maximum performance.
     """
-    a = np.asarray(a)
+    a = asarray(a)
     return (a.shape, a.dtype, fast_str(a.tostring()))
 
 

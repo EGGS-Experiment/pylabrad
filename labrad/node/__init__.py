@@ -90,13 +90,13 @@ import labrad.support
 import labrad.types as T
 import labrad.constants as C
 
-
 from labrad import util
 from labrad.util import mux
-from labrad.protocol import protocol
 from labrad.node import server_config
 from labrad.logging import setupLogging
+from labrad.protocol import protocol, auth
 from labrad.server import LabradServer, setting
+
 
 # Maximum number of lines of stdout to keep per server.
 LOG_LENGTH = 1000
@@ -712,7 +712,7 @@ class NodeServer(LabradServer):
                        LABRADHOST=self.host,
                        LABRADPORT=str(self.port),
                        PYTHON=sys.executable)
-        if isinstance(self.credential, protocol.auth.Password):
+        if isinstance(self.credential, auth.Password):
             environ.update(LABRADUSER=self.credential.username,
                            LABRADPASSWORD=self.credential.password)
         config = self.server_configs[name]

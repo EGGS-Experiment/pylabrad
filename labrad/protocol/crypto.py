@@ -2,9 +2,21 @@ import os
 import re
 import base64
 import hashlib
-import logging
 
+from socket import gethostname
 from twisted.internet import ssl
+
+from labrad.logging import setupLogging
+
+__all__ = ["tls_options", "fingerprint", "save_cert"]
+
+
+# create logger
+_extraDict = {
+    'sender_host': gethostname(),
+    'sender_name': "crypto",
+}
+log = setupLogging('labrad.protocol', extraDict=_extraDict)
 
 # Location where we store trusted self-signed manager certs.
 # The manager cert file for a given hostname is named <hostname>.cert

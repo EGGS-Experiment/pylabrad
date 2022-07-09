@@ -19,10 +19,9 @@ labrad.util.hydrant
 Generate random LabRAD data for use in testing.
 """
 
+from labrad import types as T
 from datetime import datetime, timedelta
 from random import choice, randint, gauss
-
-from labrad import types as T
 
 
 def randType(noneOkay=True, listOkay=True, nStructs=0):

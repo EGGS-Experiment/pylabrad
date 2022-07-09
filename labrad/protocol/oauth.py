@@ -9,19 +9,29 @@ APIs to validate the token and extract the user's email address. It then checks
 to see that this email address has been registered as a labrad user.
 """
 
-import http.server
-import json
-import logging
 import os
+import json
+import requests
 import threading
-import time
-import urllib.parse
 import webbrowser
+import http.server
+import urllib.parse
+
+from time import time
+from socket import gethostname
 from concurrent import futures
 
-import requests
+from labrad.logging import setupLogging
 
-log = logging.getLogger(__name__)
+__all__ = ["OAuthToken", "get_token"]
+
+
+# create logger
+_extraDict = {
+    'sender_host': gethostname(),
+    'sender_name': "oauth",
+}
+log = setupLogging('labrad.protocol', extraDict=_extraDict)
 
 
 # Page to display after we complete the OAuth flow
@@ -91,7 +101,7 @@ def get_token(client_id, client_secret, headless=False, timeout=60):
     if cached is None:
         log.debug('No cached token. Logging in. client_id=%s', client_id)
     else:
-        if cached.expires_at > time.time() + 600:
+        if cached.expires_at > time() + 600:
             log.debug('Using cached id_token. client_id=%s', client_id)
             return cached
         log.debug('Trying cached refresh_token. client_id=%s', client_id)
@@ -160,7 +170,7 @@ def get_token(client_id, client_secret, headless=False, timeout=60):
         'grant_type': 'authorization_code'
     }
     response = _send_request(TOKEN_URI, data)
-    response['expires_at'] = int(time.time() + response['expires_in'])
+    response['expires_at'] = int(time() + response['expires_in'])
     token = OAuthToken(response)
     _cache_token(client_id, token)
     return token
@@ -208,7 +218,7 @@ def _refresh_token(client_id, client_secret, refresh_token):
         'grant_type': 'refresh_token'
     }
     response = _send_request(TOKEN_URI, data)
-    response['expires_at'] = int(time.time() + response['expires_in'])
+    response['expires_at'] = int(time() + response['expires_in'])
     response['refresh_token'] = refresh_token
     return OAuthToken(response)
 
