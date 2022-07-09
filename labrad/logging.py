@@ -64,6 +64,10 @@ def setupLogging(
             'sender_name': sender.__class__.__name__,
         }
 
+    # format extraDict for syslog 5424
+    structured_data = {'sender': extraDict.copy()}
+    extraDict.update({'structured_data': structured_data})
+
     # create and configure logger
     logging.basicConfig(level=log_level, handlers=None)
     logger = logging.getLogger(logger_name)
@@ -105,13 +109,14 @@ def setupLogging(
             logger.addHandler(logfile_handler)
 
         if syslog:
+
             # create syslog handler for RFC3164
             if syslog_rfc == '3164':
                 # todo: add extradict to this syslog handler
                 from logging.handlers import SysLogHandler
-                syslog_handler = SysLogHandler(address=syslog_socket)
-                syslog_handler.setFormatter(labradLogFormatter)
-                logger.addHandler(syslog_handler)
+                syslog3164_handler = SysLogHandler(address=syslog_socket)
+                syslog3164_handler.setFormatter(labradLogFormatter)
+                logger.addHandler(syslog3164_handler)
 
             # create syslog handler for RFC5424
             elif syslog_rfc == '5424':

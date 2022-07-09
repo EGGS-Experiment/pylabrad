@@ -37,8 +37,8 @@ import labrad.client
 import labrad.concurrent
 from labrad import types as T, util
 from labrad.decorators import setting
-from labrad.logging import setupLogging, _LoggerWriter
 from labrad.wrappers import ClientAsync
+from labrad.logging import setupLogging, _LoggerWriter
 
 
 class Signal(object):
