@@ -109,7 +109,6 @@ def setupLogging(
             logger.addHandler(logfile_handler)
 
         if syslog:
-
             # create syslog handler for RFC3164
             if syslog_rfc == '3164':
                 # todo: add extradict to this syslog handler
@@ -129,7 +128,8 @@ def setupLogging(
                     )
                     logger.addHandler(syslog5424_handler)
                 except ImportError:
-                    print("Error: RFC5424 syslog handler module is not installed.")
+                    pass
+                    # print("Error: RFC5424 syslog handler module is not installed.")
                 except Exception as e:
                     print(e)
                     print("Error: unable to create RFC5424 syslog handler.")
@@ -141,7 +141,8 @@ def setupLogging(
             logger_adapter = Rfc5424SysLogAdapter(logger, extraDict)
             return logger_adapter
         except ImportError:
-            print("Error: RFC5424 syslog handler module is not installed.")
+            pass
+            # print("Error: RFC5424 syslog handler module is not installed.")
         except Exception as e:
             print("Error: unable to create RFC5424 syslog handler.")
     else:
