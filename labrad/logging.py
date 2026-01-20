@@ -3,22 +3,21 @@ labrad.logging
 
 Contains functions to set up logging.
 """
-
 import os
 import sys
 import logging
 
-__all__ = ["labradLogFormatter", "_LoggerWriter", "setupLogging"]
+__all__ = ["labradLogFormatter", "setupLogging"]
 
-
+# formatting style for labrad logs
 labradLogFormatter = logging.Formatter(
     "%(asctime)s [%(name)-15.15s] [%(sender_host)-15.15s] [%(sender_name)-25.25s] [%(levelname)-10.10s]  %(message)s"
 )
 
-
 class _LoggerWriter:
     """
     Redirects stdout to logger.
+    Currently only used by labrad.server.
     """
     encoding = 'utf-8'
 
@@ -26,11 +25,60 @@ class _LoggerWriter:
         self.level = level
 
     def write(self, message):
-        if message != '\n':
-            self.level(message)
+        if message != '\n': self.level(message)
 
     def flush(self):
         self.level(sys.stderr)
+
+class DummySyslogAdapter(logging.LoggerAdapter):
+    """
+    Dummy syslog adapter for compatibility.
+    To be used when no other valid loggers are found.
+    """
+    def __init__(self, logger, extra, *args, **kwargs):
+        super().__init__(logger, extra or {})
+
+    def process(self, msg=None, kwargs=None):
+        # extract relevant values
+        hostname, appname, procid, msgid, structured_data = map(
+            lambda key_str: kwargs.pop(key_str, None),
+            ('hostname', 'appname', 'procid', 'msgid', 'sd',)
+        )
+        if structured_data is None: structured_data = kwargs.pop('structured_data', None)
+
+        # copy extra logging information into kwargs['extra']
+        extra = self.extra.copy()
+        extra.update(kwargs.get('extra', {}))
+        # programmatically update the "extra" dict
+        def _tmp(val, key_str):
+            if val: extra[key_str] = val
+        list(map(
+            _tmp,
+            (hostname, appname, procid, msgid, structured_data),
+            ('hostname', 'appname', 'procid', 'msgid', 'structured_data',)
+        ))
+        kwargs['extra'] = extra
+        return msg, kwargs
+
+    def info(self, msg=None, *args, **kwargs):
+        super().log(logging.INFO, msg, *args, **kwargs)
+
+    # def log(self, level, msg=None, *args, **kwargs):
+    #     pass
+    # def emergency(self, msg=None, *args, **kwargs):
+    #     pass
+    # def alert(self, msg=None, *args, **kwargs):
+    #     pass
+    # def critical(self, msg=None, *args, **kwargs):
+    #     pass
+    # def error(self, msg=None, *args, **kwargs):
+    #     pass
+    # def warning(self, msg=None, *args, **kwargs):
+    #     pass
+    # def notice(self, msg=None, *args, **kwargs):
+    #     pass
+    # def debug(self, msg=None, *args, **kwargs):
+    #     pass
 
 
 def setupLogging(
@@ -89,13 +137,11 @@ def setupLogging(
         try:
             logger.addHandler(log_handler)
         except Exception as e:
-            print(e)
             print("Error: unable to add log_handler {}.".format(log_handler))
+            print(e)
 
-    # only add core handlers if they don't already exist
-    # this prevents the duplication of log messages
+    # only add core handlers if don't already exist to prevent duplication of log messages
     if len(handlers) == 0:
-
         # create console handler
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setFormatter(labradLogFormatter)
@@ -108,16 +154,14 @@ def setupLogging(
             logfile_handler.setFormatter(labradLogFormatter)
             logger.addHandler(logfile_handler)
 
+        # set up syslog handlers
         if syslog:
-            # create syslog handler for RFC3164
             if syslog_rfc == '3164':
-                # todo: add extradict to this syslog handler
                 from logging.handlers import SysLogHandler
                 syslog3164_handler = SysLogHandler(address=syslog_socket)
                 syslog3164_handler.setFormatter(labradLogFormatter)
                 logger.addHandler(syslog3164_handler)
 
-            # create syslog handler for RFC5424
             elif syslog_rfc == '5424':
                 try:
                     from rfc5424logging import Rfc5424SysLogHandler
@@ -128,22 +172,20 @@ def setupLogging(
                     )
                     logger.addHandler(syslog5424_handler)
                 except ImportError:
-                    pass
-                    # print("Error: RFC5424 syslog handler module is not installed.")
+                    print("Error: RFC5424 syslog handler module not installed.")
                 except Exception as e:
-                    print(e)
                     print("Error: unable to create RFC5424 syslog handler.")
 
-    # adapt logger and return
+    # adapt logger (i.e. add extraDict to logger) and return
     if syslog and (syslog_rfc == '5424'):
         try:
-            from rfc5424logging.adapter import Rfc5424SysLogAdapter
+            from rfc5424logging.adapte import Rfc5424SysLogAdapter
             logger_adapter = Rfc5424SysLogAdapter(logger, extraDict)
             return logger_adapter
-        except ImportError:
-            pass
-            # print("Error: RFC5424 syslog handler module is not installed.")
         except Exception as e:
-            print("Error: unable to create RFC5424 syslog handler.")
+            print("Error: unable to create RFC5424 syslog adapter.")
+            logger_adapter = DummySyslogAdapter(logger, extraDict)
+            return logger_adapter
     else:
-        return logger
+        return logging.LoggerAdapter(logger, extraDict)
+
