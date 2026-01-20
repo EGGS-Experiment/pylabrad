@@ -179,7 +179,7 @@ def setupLogging(
     # adapt logger (i.e. add extraDict to logger) and return
     if syslog and (syslog_rfc == '5424'):
         try:
-            from rfc5424logging.adapte import Rfc5424SysLogAdapter
+            from rfc5424logging.adapter import Rfc5424SysLogAdapter
             logger_adapter = Rfc5424SysLogAdapter(logger, extraDict)
             return logger_adapter
         except Exception as e:
